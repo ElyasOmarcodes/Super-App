@@ -110,6 +110,18 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      # Flutter picks the CMake generator from whatever Visual Studio it finds
+      # through vswhere, and silently falls back to "Visual Studio 16 2019"
+      # when it finds nothing — which then fails with a confusing error. Print
+      # both views so a detection failure is obvious in the log.
+      - name: report toolchain
+        shell: bash
+        run: |
+          "$PROGRAMFILES (x86)/Microsoft Visual Studio/Installer/vswhere.exe" \
+            -products '*' -prerelease -format value \
+            -property installationVersion || echo 'vswhere found nothing'
+          flutter doctor -v
+
       - name: build
         working-directory: app
         run: >
@@ -120,10 +132,14 @@ jobs:
       - name: pack
         shell: bash
         run: |
-          release=$(find app/build/windows -type d -name Release | head -n 1)
+          # Several Release directories exist under build/windows (each plugin
+          # gets one); only the runner's holds the executable and its bundle.
+          release=app/build/windows/x64/runner/Release
+          [ -d "$release" ] || release=$(find app/build/windows -type d -path '*runner/Release' | head -n 1)
+          [ -x "$release/qamus.exe" ] || { echo "no runner bundle at $release"; exit 1; }
           mkdir -p out/qamus
           cp -r "$release"/* out/qamus/
-          rm -rf out/qamus/*.pdb
+          rm -f out/qamus/*.pdb
           tar -C out -cf - . | xz -9e --threads=0 > qamus-windows.tar.xz
           ls -lh qamus-windows.tar.xz
 
