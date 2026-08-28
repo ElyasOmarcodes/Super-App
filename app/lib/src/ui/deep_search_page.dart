@@ -7,7 +7,6 @@ import '../data/arabic.dart';
 import '../data/dictionary.dart';
 import '../data/models.dart';
 import 'books_sheet.dart';
-import 'format.dart';
 import 'entry_page.dart';
 import 'widgets/common.dart';
 
@@ -72,7 +71,7 @@ class _DeepSearchPageState extends State<DeepSearchPage> {
             setState(() => _running = false);
             ScaffoldMessenger.of(
               context,
-            ).showSnackBar(SnackBar(content: Text('تعذّر البحث: $error')));
+            ).showSnackBar(SnackBar(content: Text('$error')));
           },
           onDone: () {
             if (mounted) setState(() => _running = false);
@@ -92,10 +91,10 @@ class _DeepSearchPageState extends State<DeepSearchPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('بحث في المعاني'),
+        title: Text(context.str.deepSearch),
         actions: [
           IconButton(
-            tooltip: 'المعاجم',
+            tooltip: context.str.lexicons,
             onPressed: () => showBooksSheet(context),
             icon: const Icon(Icons.library_books_outlined),
           ),
@@ -118,13 +117,13 @@ class _DeepSearchPageState extends State<DeepSearchPage> {
               onSubmitted: (_) => _start(),
               style: theme.textTheme.headlineSmall,
               decoration: InputDecoration(
-                hintText: 'كلمة أو عبارة داخل الشروح…',
+                hintText: context.str.deepSearchHint,
                 prefixIcon: const Icon(Icons.travel_explore_rounded),
                 suffixIcon: IconButton(
-                  tooltip: _running ? 'إيقاف' : 'ابحث',
+                  tooltip: _running ? context.str.stop : context.str.search,
                   onPressed: _running ? _stop : _start,
                   icon: Icon(
-                    _running ? Icons.stop_rounded : Icons.arrow_back_rounded,
+                    _running ? Icons.stop_circle_rounded : Icons.search_rounded,
                   ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -140,13 +139,13 @@ class _DeepSearchPageState extends State<DeepSearchPage> {
               child: Row(
                 children: [
                   Text(
-                    countedResults(_hits.length),
+                    context.str.results(_hits.length),
                     style: theme.textTheme.titleSmall,
                   ),
                   const Spacer(),
                   if (_running)
                     Text(
-                      '${arabicNumber((_progress * 100).round())}٪',
+                      '${context.str.n((_progress * 100).round())}٪',
                       style: theme.textTheme.labelSmall,
                     ),
                 ],
@@ -161,11 +160,11 @@ class _DeepSearchPageState extends State<DeepSearchPage> {
                         ? Icons.hourglass_top_rounded
                         : Icons.manage_search_rounded,
                     title: _running
-                        ? 'جارٍ التفتيش في الشروح…'
-                        : 'ابحث داخل نصّ المعاجم',
+                        ? context.str.deepSearchRunning
+                        : context.str.deepSearchEmpty,
                     detail: _running
-                        ? 'يُفكّ ضغط الشروح ويُفتَّش فيها مقطعًا بعد مقطع'
-                        : 'اعثر على الكلمة ولو لم تكن هي المدخل، بل ورَدت في شرحه',
+                        ? context.str.deepSearchRunningDetail
+                        : context.str.deepSearchEmptyDetail,
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.only(bottom: 40),
@@ -300,6 +299,7 @@ class _Excerpt extends StatelessWidget {
     return Text.rich(
       TextSpan(children: spans),
       style: style,
+      textDirection: TextDirection.rtl,
       maxLines: 3,
       overflow: TextOverflow.ellipsis,
     );

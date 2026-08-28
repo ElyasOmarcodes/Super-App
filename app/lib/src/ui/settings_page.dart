@@ -2,229 +2,408 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app.dart';
+import '../l10n/locales.dart';
 import '../theme.dart';
+import 'about_page.dart';
 import 'books_sheet.dart';
-import 'format.dart';
+import 'widgets/motion.dart';
 
-/// Reading preferences, the book filter, and the corpus credits.
+/// Language, appearance, reading preferences, sources and credits.
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final scope = Qamus.of(context);
+    final scope = context.qamus;
+    final strings = context.str;
     final settings = scope.settings;
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    var step = 0;
+    Widget stagger(Widget child) => FadeSlideIn(
+      delay: Duration(milliseconds: 60 * step++),
+      child: child,
+    );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الإعدادات')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-        children: [
-          _Group(
-            title: 'المظهر',
-            children: [
-              SegmentedButton<ThemeMode>(
-                segments: const [
-                  ButtonSegment(
-                    value: ThemeMode.light,
-                    icon: Icon(Icons.light_mode_outlined),
-                    label: Text('فاتح'),
-                  ),
-                  ButtonSegment(
-                    value: ThemeMode.system,
-                    icon: Icon(Icons.brightness_auto_outlined),
-                    label: Text('تلقائي'),
-                  ),
-                  ButtonSegment(
-                    value: ThemeMode.dark,
-                    icon: Icon(Icons.dark_mode_outlined),
-                    label: Text('داكن'),
-                  ),
-                ],
-                selected: {settings.themeMode},
-                onSelectionChanged: (value) =>
-                    settings.setThemeMode(value.first),
-                showSelectedIcon: false,
-              ),
-            ],
-          ),
-          _Group(
-            title: 'القراءة',
-            children: [
-              Text('حجم نصّ الشروح', style: theme.textTheme.titleSmall),
-              Row(
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 150),
+          children: [
+            Text(strings.navSettings, style: theme.textTheme.headlineMedium),
+            const SizedBox(height: 18),
+
+            // --------------------------------------------------- language
+            stagger(
+              _Group(
+                title: strings.language,
+                icon: Icons.translate_rounded,
+                tint: QamusTheme.blue,
+                subtitle: strings.languageDetail,
                 children: [
-                  const Icon(Icons.text_decrease_rounded, size: 18),
-                  Expanded(
-                    child: Slider(
-                      value: settings.textScale,
-                      min: 0.8,
-                      max: 1.8,
-                      divisions: 10,
-                      label: '×${settings.textScale.toStringAsFixed(1)}',
-                      onChanged: settings.setTextScale,
+                  for (final locale in AppLocale.values)
+                    _LanguageRow(
+                      locale: locale,
+                      selected: settings.appLocale == locale,
+                      onTap: () => settings.setLocale(locale),
                     ),
-                  ),
-                  const Icon(Icons.text_increase_rounded, size: 22),
                 ],
               ),
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerLowest,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: theme.colorScheme.outlineVariant),
-                ),
-                child: Text(
-                  settings.showVowels
-                      ? 'الْعِلْمُ نُورٌ يَهْدِي صَاحِبَهُ'
-                      : 'العلم نور يهدي صاحبه',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontSize: 20 * settings.textScale,
-                  ),
-                ),
-              ),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                value: settings.showVowels,
-                onChanged: settings.setShowVowels,
-                title: Text(
-                  'إظهار التشكيل',
-                  style: theme.textTheme.titleMedium,
-                ),
-                subtitle: Text(
-                  'أخفِ الحركات إذا كنت تفضّل نصًّا مجرّدًا',
-                  style: theme.textTheme.bodySmall,
-                ),
-              ),
-            ],
-          ),
-          _Group(
-            title: 'المصادر',
-            children: [
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.library_books_outlined),
-                title: Text(
-                  'المعاجم المفعّلة',
-                  style: theme.textTheme.titleMedium,
-                ),
-                subtitle: Text(
-                  settings.allBooksSelected
-                      ? 'جميع المعاجم الستّة'
-                      : '${countedBooks(settings.selectedBooks.length)} من '
-                            '${arabicNumber(scope.dictionary.books.length)}',
-                  style: theme.textTheme.bodySmall,
-                ),
-                trailing: const Icon(Icons.chevron_left_rounded),
-                onTap: () => showBooksSheet(context),
-              ),
-              const SizedBox(height: 6),
-              for (final book in scope.dictionary.books)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: bookColor(book.id, theme.colorScheme),
-                          shape: BoxShape.circle,
-                        ),
+            ),
+
+            // -------------------------------------------------- appearance
+            stagger(
+              _Group(
+                title: strings.appearance,
+                icon: Icons.palette_rounded,
+                tint: scheme.primary,
+                children: [
+                  SegmentedButton<ThemeMode>(
+                    segments: [
+                      ButtonSegment(
+                        value: ThemeMode.light,
+                        icon: const Icon(Icons.light_mode_rounded),
+                        label: Text(strings.themeLight),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          book.name,
-                          style: theme.textTheme.bodyMedium,
-                        ),
+                      ButtonSegment(
+                        value: ThemeMode.system,
+                        icon: const Icon(Icons.brightness_auto_rounded),
+                        label: Text(strings.themeSystem),
                       ),
-                      Text(
-                        arabicNumber(book.count),
-                        style: theme.textTheme.labelSmall,
+                      ButtonSegment(
+                        value: ThemeMode.dark,
+                        icon: const Icon(Icons.dark_mode_rounded),
+                        label: Text(strings.themeDark),
                       ),
                     ],
+                    selected: {settings.themeMode},
+                    onSelectionChanged: (value) =>
+                        settings.setThemeMode(value.first),
+                    showSelectedIcon: false,
                   ),
-                ),
-            ],
-          ),
-          _Group(
-            title: 'عن التطبيق',
-            children: [
-              Text(
-                'قاموس المعاني — معجم عربي عربي يعمل دون اتصال بالإنترنت، '
-                'مبنيّ على ${arabicNumber(scope.dictionary.entryCount)} مدخلًا '
-                'من ستّة معاجم، مضغوطة في ملف واحد داخل التطبيق.',
-                style: theme.textTheme.bodyMedium,
+                ],
               ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
+            ),
+
+            // ----------------------------------------------------- reading
+            stagger(
+              _Group(
+                title: strings.reading,
+                icon: Icons.menu_book_rounded,
+                tint: QamusTheme.amber,
                 children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.description_outlined, size: 16),
-                    label: const Text('تراخيص الخطوط'),
-                    onPressed: () => showLicensePage(
-                      context: context,
-                      applicationName: 'قاموس المعاني',
-                      applicationLegalese:
-                          'خطّا Amiri و Tajawal مرخّصان بموجب SIL Open Font License 1.1',
+                  Text(strings.textSize, style: theme.textTheme.titleSmall),
+                  Row(
+                    children: [
+                      const Icon(Icons.text_decrease_rounded, size: 18),
+                      Expanded(
+                        child: Slider(
+                          value: settings.textScale,
+                          min: 0.8,
+                          max: 1.8,
+                          divisions: 10,
+                          label: '×${settings.textScale.toStringAsFixed(1)}',
+                          onChanged: settings.setTextScale,
+                        ),
+                      ),
+                      const Icon(Icons.text_increase_rounded, size: 22),
+                    ],
+                  ),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerLowest,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: Text(
+                      settings.showVowels
+                          ? strings.sampleVowelled
+                          : strings.sampleBare,
+                      textDirection: TextDirection.rtl,
+                      style: theme.textTheme.bodyLarge?.copyWith(
+                        fontSize: 18 * settings.textScale,
+                      ),
                     ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.copy_rounded, size: 16),
-                    label: const Text('نسخ مسار قاعدة البيانات'),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: settings.showVowels,
+                    onChanged: settings.setShowVowels,
+                    title: Text(
+                      strings.showVowels,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    subtitle: Text(
+                      strings.showVowelsDetail,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ----------------------------------------------------- sources
+            stagger(
+              _Group(
+                title: strings.sources,
+                icon: Icons.library_books_rounded,
+                tint: QamusTheme.rose,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(
+                      strings.activeLexicons,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    subtitle: Text(
+                      settings.allBooksSelected
+                          ? strings.allSix
+                          : '${strings.books(settings.selectedBooks.length)} / '
+                                '${strings.n(scope.dictionary.books.length)}',
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => showBooksSheet(context),
+                  ),
+                  const SizedBox(height: 4),
+                  for (final book in scope.dictionary.books)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 9,
+                            height: 9,
+                            decoration: BoxDecoration(
+                              color: bookColor(book.id, scheme),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 11),
+                          Expanded(
+                            child: Text(
+                              book.name,
+                              style: theme.textTheme.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Text(
+                            strings.n(book.count),
+                            style: theme.textTheme.labelSmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+
+            // ------------------------------------------------------- about
+            stagger(
+              _Group(
+                title: strings.about,
+                icon: Icons.info_rounded,
+                tint: scheme.tertiary,
+                children: [
+                  for (final entry in [
+                    (
+                      Icons.auto_stories_rounded,
+                      strings.aboutProgram,
+                      AboutSection.program,
+                    ),
+                    (
+                      Icons.person_rounded,
+                      strings.aboutDeveloper,
+                      AboutSection.developer,
+                    ),
+                    (
+                      Icons.lightbulb_rounded,
+                      strings.howItWorks,
+                      AboutSection.how,
+                    ),
+                    (
+                      Icons.workspace_premium_rounded,
+                      strings.licenses,
+                      AboutSection.licences,
+                    ),
+                  ])
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(entry.$1, size: 21),
+                      title: Text(entry.$2, style: theme.textTheme.titleMedium),
+                      trailing: Icon(Icons.chevron_right_rounded, size: 20),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => AboutPage(section: entry.$3),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
                     onPressed: () {
                       Clipboard.setData(
                         ClipboardData(text: scope.dictionary.path),
                       );
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('نُسخ المسار')),
+                        SnackBar(content: Text(strings.pathCopied)),
                       );
                     },
+                    icon: const Icon(Icons.folder_copy_rounded, size: 18),
+                    label: Text(strings.copyDbPath),
                   ),
                 ],
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LanguageRow extends StatelessWidget {
+  const _LanguageRow({
+    required this.locale,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final AppLocale locale;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Pressable(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 240),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected
+                ? scheme.primaryContainer
+                : scheme.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: selected ? scheme.primary : scheme.outlineVariant,
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Directionality(
+                textDirection: locale.textDirection,
+                child: Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        locale.nativeName,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontSize: 16,
+                          color: selected
+                              ? scheme.onPrimaryContainer
+                              : scheme.onSurface,
+                        ),
+                      ),
+                      Text(
+                        locale.englishName,
+                        style: theme.textTheme.labelSmall,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              AnimatedScale(
+                scale: selected ? 1 : 0,
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeOutBack,
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  color: scheme.primary,
+                  size: 22,
+                ),
+              ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _Group extends StatelessWidget {
-  const _Group({required this.title, required this.children});
+  const _Group({
+    required this.title,
+    required this.icon,
+    required this.tint,
+    required this.children,
+    this.subtitle,
+  });
 
   final String title;
+  final IconData icon;
+  final Color tint;
+  final String? subtitle;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 26),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Row(
-              children: [
-                Text(title, style: theme.textTheme.titleMedium),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Divider(color: theme.colorScheme.outlineVariant),
+      padding: const EdgeInsets.only(bottom: 22),
+      // A Material, not a DecoratedBox: the ListTiles inside paint their ink
+      // on the nearest Material ancestor, and a plain box would hide it.
+      child: Material(
+        color: theme.colorScheme.surfaceContainerLow,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(QamusTheme.radius),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: tint.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Icon(icon, size: 17, color: tint),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(title, style: theme.textTheme.titleLarge),
+                  ),
+                ],
+              ),
+              if (subtitle != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(subtitle!, style: theme.textTheme.bodySmall),
                 ),
-              ],
-            ),
+              const SizedBox(height: 14),
+              ...children,
+            ],
           ),
-          ...children,
-        ],
+        ),
       ),
     );
   }

@@ -1,20 +1,21 @@
 # قاموس المعاني — Qamus al-Maani
 
 یو آفلاین عربي–عربي قاموس چې په ډارټ/فلټر کې لیکل شوی دی او د **وینډوز، اندروید او
-iOS** لپاره جوړېږي. ټول ۲۱۹٬۷۶۴ مدخلونه له شپږو معاجمو څخه په اپلکیشن کې دننه دي —
-هېڅ انټرنټ ته اړتیا نشته.
+iOS** لپاره جوړېږي. ټول ۲۱۹٬۷۶۴ مدخلونه له شپږو معاجمو څخه — یو حرف هم نه دی
+حذف شوی — په ۱۰ MB کې بند دي. هېڅ انټرنټ ته اړتیا نشته.
 
-An offline Arabic–Arabic dictionary: 219,764 entries drawn from six classical and
-modern lexicons, packed into a single 15 MB asset that ships inside the app.
+An offline Arabic–Arabic dictionary: 219,764 entries from six lexicons, packed
+into a 9.9 MB asset with **not one character removed**, and an interface that
+speaks Pashto, Persian, Arabic and English.
 
 ![the launcher mark](docs/icon.png)
 
 | | |
 |---|---|
-| ![live search](docs/screens/search.png) | ![an entry](docs/screens/entry.png) |
-| *live results, collapsed by headword* | *every sense, grouped by source* |
-| ![searching inside definitions](docs/screens/deep-search.png) | ![dark](docs/screens/dark.png) |
-| *the definition sweep, with matches picked out* | *deep ink, by night* |
+| ![the dashboard](docs/screens/dashboard.png) | ![search results](docs/screens/search.png) |
+| *the dashboard: word of the day, corpus at a glance, the six lexicons* | *live results, collapsed by headword* |
+| ![an entry](docs/screens/entry.png) | ![dark](docs/screens/dark.png) |
+| *every sense, grouped by its source* | *near-black by night* |
 
 ---
 
@@ -22,14 +23,15 @@ modern lexicons, packed into a single 15 MB asset that ships inside the app.
 
 | | |
 |---|---|
-| **ژوندی لټون** | له لومړي حرف څخه سمدستي وړاندیزونه؛ ټول شکلونه د یوې کلمې لاندې راټولېږي |
-| **د پای لټون** | «ينتهي بـ» — ووایه چې کومې کلمې په «يب» پای ته رسېږي، او سمدستي یې ترلاسه کړه |
-| **د کتاب فلټر** | یو معجم، څو، یا ټول شپږ — لټون یوازې هغو کې کیږي چې ټاکل شوي وي |
-| **مشابه کلمې** | د هرې کلمې په پای کې د هغه جذر مشتقات او نږدې کلمې، په یو کلیک سره |
-| **د شرحو لټون** | د معناګانو په متن کې لټون — هغه کلمه ومومه چې مدخل نه دی، خو په شرح کې راغلې |
-| **د جذرونو تصفح** | لکه چاپي قاموس: جذر وټاکه، ټول مشتقات یې وګوره |
-| **محفوظات** | نښه شوې کلمې او د لټون تاریخچه |
-| **ښکلی ښکارېدل** | د پارچمنټ رڼا او د تور مرکب شپه، Amiri خط، بشپړ RTL |
+| **څلور ژبې** | عربي (ډیفالټ)، پښتو، فارسي، انګلیسي — هر توری د اپلیکیشن ژباړل کیږي |
+| **ژوندی لټون** | له لومړي حرف څخه سمدستي وړاندیزونه؛ ټول شکلونه د یوې کلمې لاندې |
+| **د پای لټون** | «ينتهي بـ» — ووایه چې کومې کلمې په «يب» پای ته رسېږي |
+| **د کتاب فلټر** | یو معجم، څو، یا ټول شپږ |
+| **مشابه کلمې** | د جذر مشتقات او نږدې کلمې، په یو کلیک |
+| **د شرحو لټون** | د معناګانو په متن کې لټون |
+| **د جذرونو تصفح** | لکه چاپي قاموس: جذر وټاکه، مشتقات یې وګوره |
+| **محفوظات** | نښه شوې کلمې او د لوستلو تاریخچه |
+| **مډرن ډیزاین** | سپین/تور بک ګراند، رنګین کارټونه، نرم انمیشنونه |
 
 ### Six source lexicons
 
@@ -44,49 +46,72 @@ modern lexicons, packed into a single 15 MB asset that ships inside the app.
 
 ---
 
-## د ډېټابیس کمپریشن / How the corpus got small
+## هیڅ شی نه دی حذف شوی / Nothing was removed
 
-خام ډېټابیس **۱۷۰.۶ MB** و. هغه څه چې اپلکیشن یې لېږدوي **۱۵.۲ MB** دي — **۱۱.۳ ځله
-کوچنی**. دا په څلورو ګامونو ترسره شو:
+خام ډېټابیس **۱۷۰.۶ MB** و او د xz په ultra موډ کې **۲۴.۵ MB** کېده. زمونږ فایل
+**۹.۹ MB** دی — خو **یو حرف هم کم نه دی**. دا په دې دلیل چې کمپریشن د بیرغونو
+(`-9e`, `pb=0`, لوی dictionary) پر ځای د **ترتیب** له لارې ترلاسه شو.
 
-The raw `AlmaanyArArV11.db` is **170.6 MB**. What the app ships is **15.2 MB** —
-**11.3× smaller** — through four decisions, none of which cost a millisecond at
-lookup time:
+The source is 170.6 MB; `xz -9e` over it is 24.5 MB. The shipped file is 9.9 MB
+and every entry survives byte for byte. `tools/verify_db.py` proves it:
 
-1. **Solid definition blocks.** The 51.7 MB of Arabic definition text is stored
-   as deflate blocks of 512 consecutive entries, ordered by *(book, root, word)*
-   so that neighbouring entries share vocabulary and formatting. That ordering
-   alone buys ~9%. Result: **51.7 MB → 13.6 MB (3.8×)** in 430 blocks.
-   Deflate is used rather than LZMA because `dart:io` exposes zlib natively, so
-   inflating one block costs about a millisecond and pulls in no native
-   dependency. A small LRU keeps the last few blocks resident, which makes
-   walking a root essentially free.
-2. **Nothing derivable is shipped.** The normalised search key `k`, its reversal
-   `kr` (which turns a suffix query into a prefix scan), and all four indexes are
-   absent from the asset. The app materialises them once, on first launch, in a
-   background isolate.
-3. **`xz -9e` over the whole file.** 20.7 MB of SQLite → **15.2 MB**.
-   Pure-Dart XZ decoding takes ~1.7 s on a desktop; it happens exactly once.
-4. **Subset fonts.** Amiri and Tajawal are cut down to the Arabic ranges plus
-   basic Latin: **1.03 MB → 546 KB**, with all shaping features intact.
+```
+$ python3 tools/verify_db.py AlmaanyArArV11.db app/assets/db/qamus.corpus.xz
+  IDENTICAL — all 219,764 entries and all 28,840,527 characters of
+  definition text round-trip byte for byte.
+```
 
-Rebuild the asset from a source corpus with:
+### Where the source's 170.6 MB went
+
+| | | |
+|---|---:|---|
+| definitions | 51.5 MB | **kept in full** |
+| headwords | 3.0 MB | **kept in full** |
+| roots | 1.3 MB | **kept in full** |
+| book attribution | 6.9 MB | **kept**, as a one-byte id per entry |
+| `searchword` | 2.0 MB | dropped — it is `word` with its diacritics removed |
+| `dict`, `id` | 3.6 MB | dropped — both derivable |
+| `Keys` | 12.8 MB | dropped — an autocomplete index. Its 94,302 headwords are the same 93,970 the entries already carry, plus 339 stubs that have **no definition anywhere in the file** |
+| the rest | ~89 MB | SQLite page overhead, indexes and free space |
+
+### Where the compression came from
+
+Flags were not the answer. Over the same bytes, `pb=0`, `lc=4` and a 256 MiB
+dictionary all land within **0.2%** of the plain `-9e` preset. Layout was:
+
+| | |
+|---:|---|
+| 15.2 MB | definitions deflated into blocks *before* shipping — already compressed, so xz could not touch them |
+| 12.3 MB | definitions stored as plain text inside a SQLite file |
+| **9.9 MB** | plain text in a **columnar container** — all the lengths together, then all the headwords, then all the definitions |
+
+A SQLite file interleaves every column of every row across 4 KiB pages. Laid
+out columnar instead, xz sees long runs of like-shaped data, and the same
+55.8 MB compresses 19% further. Sorting entries by *(book, root, word)* — so
+neighbours share vocabulary and formatting — is worth another 9%.
+
+The definition blocks still exist; the app just builds them on the device on
+first launch instead of shipping them, along with the search keys and the four
+indexes. Everything that can be recomputed is, because recomputing is free and
+downloading is not.
+
+```
+app/assets/db/qamus.corpus.xz   9.9 MB   shipped
+        │  xz -9e
+        ▼
+   container  55.8 MB           lengths │ headwords │ definitions
+        │  one pass on first launch
+        ▼
+    qamus.db  ~37 MB            + normalised keys, reversed keys, 4 indexes,
+                                  definitions in deflate blocks of 512
+```
+
+Rebuild it from a source corpus with:
 
 ```bash
-python3 tools/build_db.py /path/to/AlmaanyArArV11.db -o app/assets/db/qamus.db
+python3 tools/build_db.py /path/to/AlmaanyArArV11.db -o app/assets/db/qamus.corpus.xz
+python3 tools/verify_db.py /path/to/AlmaanyArArV11.db app/assets/db/qamus.corpus.xz
 ```
-
-### Schema
-
-```sql
-books  (id, name, dict, n)
-roots  (id, r)
-entries(id, w, rid, b, k, kr)   -- k / kr filled in on the device
-chunks (id, z)                  -- 512 definitions per deflate block
-```
-
-`entries.id` is assigned in packing order, so a definition's location is pure
-arithmetic: block `id / 512`, slot `id % 512`. No join, no lookup table.
 
 ### Searching
 
@@ -107,8 +132,22 @@ That single fold gives all five modes off two B-tree indexes:
 | الجذر | join through `roots` |
 
 Prefix search lands in well under a millisecond; suffix search in about two.
-The definition sweep ("بحث في المعاني") has no index to lean on — it inflates all
-430 blocks — so it runs in its own isolate and streams hits in as it finds them.
+The definition sweep ("بحث في المعاني") has no index to lean on — it inflates
+all 430 blocks — so it runs in its own isolate and streams hits as it finds them.
+
+---
+
+## Design
+
+A neutral ground and saturated accents, not a tinted one: `#F7F7FB` by day and
+`#0B0B12` by night, with six accent hues carrying the colour through gradient
+cards, the lexicon strip and the section headers. One typeface —
+**Vazirmatn**, subset to the Arabic ranges plus Latin, 284 KB across four
+weights — serves all four interface languages and the Arabic corpus, so nothing
+on screen ever falls back to a system font.
+
+Every looping animation (the rosette, the aurora wash) stops when the system
+asks for reduced motion, which also makes them testable.
 
 ---
 
@@ -117,7 +156,7 @@ The definition sweep ("بحث في المعاني") has no index to lean on — 
 ```bash
 cd app
 flutter pub get
-flutter test                       # 29 tests, run against the real corpus
+flutter test                       # 40 tests, run against the real corpus
 flutter run -d windows             # or android, or ios
 ```
 
@@ -149,16 +188,18 @@ python3 tools/make_icons.py
 ## CI artifacts
 
 `.github/workflows/build.yml` analyzes, tests, then builds all three targets.
-Each job packs its output as a **`.tar.xz`** compressed with `xz -9e`, and uploads
-it with `compression-level: 0` — GitHub always wraps artifacts in a zip, and
-re-deflating an LZMA stream only makes it bigger. Pushing a `v*` tag additionally
-publishes the three archives as a GitHub release.
+Each output is compressed with `xz -9e` and uploaded with
+`compression-level: 0` — GitHub always wraps artifacts in a zip, and
+re-deflating an LZMA stream only makes it bigger.
 
 | Artifact | Contents |
 |---|---|
-| `qamus-android` | per-ABI APKs + AAB |
+| `qamus-arm64-apk` | **`app-arm64-v8a-release.apk.xz`** — on its own, since it is what almost every phone needs |
+| `qamus-android-other` | the armeabi-v7a and x86_64 APKs, and the AAB |
 | `qamus-windows` | the release bundle |
 | `qamus-ios` | unsigned `.ipa` |
+
+Pushing a `v*` tag additionally publishes them as a GitHub release.
 
 ---
 
@@ -166,20 +207,22 @@ publishes the three archives as a GitHub release.
 
 ```
 app/
-  lib/src/data/     arabic.dart · bootstrap.dart · dictionary.dart · models.dart · settings.dart
-  lib/src/ui/       home · entry · roots · deep_search · saved · settings · books_sheet
+  lib/src/data/     arabic · corpus · bootstrap · dictionary · models · settings
+  lib/src/l10n/     locales · strings          four languages, one table
+  lib/src/ui/       shell · dashboard · home · entry · roots · deep_search
+                    library · settings · about · onboarding/
   lib/src/theme.dart
-  assets/db/        qamus.db.xz          the packed corpus
-  assets/fonts/     Amiri · Tajawal      subset to the Arabic ranges
+  assets/db/        qamus.corpus.xz            the packed corpus
+  assets/fonts/     Vazirmatn                  subset to the Arabic ranges
   test/             arabic · dictionary · app
 tools/
-  build_db.py       corpus  ->  packed asset
+  build_db.py       corpus   ->  shipped container
+  verify_db.py      container -> proof that nothing was lost
   make_icons.py     the launcher mark, for every platform slot
 ```
 
 ## Licences
 
-The Amiri and Tajawal typefaces are used under the SIL Open Font License 1.1;
-their licence texts ship in `app/assets/licenses/` and are reachable from the
-app's settings screen. The dictionary content belongs to its respective
-publishers.
+Vazirmatn is used under the SIL Open Font License 1.1; its licence text ships in
+`app/assets/licenses/` and is reachable from the app's settings screen. The
+dictionary content belongs to its respective publishers.

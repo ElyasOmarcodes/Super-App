@@ -7,18 +7,21 @@ import '../data/arabic.dart';
 import '../data/models.dart';
 import '../theme.dart';
 import 'books_sheet.dart';
-import 'format.dart';
+import 'dashboard.dart';
 import 'deep_search_page.dart';
-import 'entry_page.dart';
-import 'roots_page.dart';
-import 'saved_page.dart';
-import 'settings_page.dart';
+import 'widgets/cards.dart';
 import 'widgets/common.dart';
+import 'widgets/motion.dart';
 
-/// The search surface: a query field, the mode selector, the book filter and
-/// live results — everything one screen away.
+export 'dashboard.dart' show decodeRecord;
+
+/// The search surface, and the dashboard the reader lands on before typing.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  const HomePage({super.key, this.onOpenMenu});
+
+  /// Opens the shell's drawer. Null when the page is shown on its own, as in
+  /// a widget test, in which case the menu button is simply absent.
+  final VoidCallback? onOpenMenu;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -48,7 +51,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _run(String value) {
-    final scope = Qamus.of(context);
+    final scope = context.qamus;
     final key = normalize(value);
     if (key.isEmpty) {
       setState(() {
@@ -73,21 +76,25 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _openEntry(String key) {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute<void>(builder: (_) => EntryPage(entryKey: key)));
-  }
+  void _openEntry(String key) => openEntry(context, key);
 
   void _setMode(SearchMode mode) {
-    Qamus.of(context).settings.setSearchMode(mode);
+    context.qamus.settings.setSearchMode(mode);
     if (_controller.text.isNotEmpty) _run(_controller.text);
   }
 
+  String _modeLabel(SearchMode mode) => switch (mode) {
+    SearchMode.starts => context.str.modeStarts,
+    SearchMode.ends => context.str.modeEnds,
+    SearchMode.contains => context.str.modeContains,
+    SearchMode.exact => context.str.modeExact,
+    SearchMode.root => context.str.modeRoot,
+  };
+
   @override
   Widget build(BuildContext context) {
-    final scope = Qamus.of(context);
-    final theme = Theme.of(context);
+    final scope = context.qamus;
+    final strings = context.str;
     final settings = scope.settings;
 
     return Scaffold(
@@ -98,6 +105,10 @@ class _HomePageState extends State<HomePage> {
             _Header(
               controller: _controller,
               focus: _focus,
+              onOpenMenu: widget.onOpenMenu,
+              title: strings.appName,
+              hint: strings.searchHint,
+              clearLabel: strings.clear,
               onChanged: _onQueryChanged,
               onSubmitted: _run,
               onClear: () {
@@ -107,44 +118,57 @@ class _HomePageState extends State<HomePage> {
             ),
             _ModeBar(
               mode: settings.searchMode,
+              labelOf: _modeLabel,
               onModeChanged: _setMode,
               bookLabel: _bookLabel(scope),
               booksFiltered: !settings.allBooksSelected,
               onBooks: () => showBooksSheet(context),
             ),
-            const Divider(height: 1),
             Expanded(
-              child: _query.isEmpty
-                  ? _Landing(
-                      onOpen: _openEntry,
-                      onSearch: (word) {
-                        _controller.text = word;
-                        _run(word);
-                      },
-                    )
-                  : _Results(
-                      results: _results,
-                      searching: _searching,
-                      query: _query,
-                      mode: settings.searchMode,
-                      onOpen: _openEntry,
-                    ),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 260),
+                child: _query.isEmpty
+                    ? Dashboard(
+                        key: const ValueKey('dashboard'),
+                        onOpen: _openEntry,
+                        onSearch: (word) {
+                          _controller.text = word;
+                          _run(word);
+                        },
+                      )
+                    : _Results(
+                        key: ValueKey(_query),
+                        results: _results,
+                        searching: _searching,
+                        query: _query,
+                        mode: settings.searchMode,
+                        modeLabel: _modeLabel(settings.searchMode),
+                        onOpen: _openEntry,
+                      ),
+              ),
             ),
           ],
         ),
       ),
-      floatingActionButton: _query.isEmpty
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) =>
-                      DeepSearchPage(initialQuery: _controller.text),
-                ),
+      floatingActionButton: AnimatedSlide(
+        offset: _query.isEmpty ? const Offset(0, 2.4) : Offset.zero,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 82),
+          child: FloatingActionButton.extended(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => DeepSearchPage(initialQuery: _controller.text),
               ),
-              icon: const Icon(Icons.travel_explore_rounded),
-              label: Text('بحث في المعاني', style: theme.textTheme.labelLarge),
             ),
+            backgroundColor: QamusTheme.emerald,
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.travel_explore_rounded),
+            label: Text(strings.deepSearch),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -152,11 +176,12 @@ class _HomePageState extends State<HomePage> {
 /// One selected book reads best as its own name; anything else as a count.
 String _bookLabel(Qamus scope) {
   final selected = scope.settings.selectedBooks;
-  if (scope.settings.allBooksSelected) return 'كل المعاجم';
+  if (scope.settings.allBooksSelected) return scope.strings.allBooks;
   if (selected.length == 1) {
-    return scope.dictionary.book(selected.first)?.name ?? countedBooks(1);
+    return scope.dictionary.book(selected.first)?.name ??
+        scope.strings.books(1);
   }
-  return countedBooks(selected.length);
+  return scope.strings.books(selected.length);
 }
 
 // ---------------------------------------------------------------- the header
@@ -165,6 +190,10 @@ class _Header extends StatelessWidget {
   const _Header({
     required this.controller,
     required this.focus,
+    required this.onOpenMenu,
+    required this.title,
+    required this.hint,
+    required this.clearLabel,
     required this.onChanged,
     required this.onSubmitted,
     required this.onClear,
@@ -172,6 +201,10 @@ class _Header extends StatelessWidget {
 
   final TextEditingController controller;
   final FocusNode focus;
+  final VoidCallback? onOpenMenu;
+  final String title;
+  final String hint;
+  final String clearLabel;
   final ValueChanged<String> onChanged;
   final ValueChanged<String> onSubmitted;
   final VoidCallback onClear;
@@ -179,55 +212,76 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      padding: const EdgeInsets.fromLTRB(18, 8, 18, 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [
-              Text('قاموس المعاني', style: theme.textTheme.headlineMedium),
-              const Spacer(),
-              IconButton(
-                tooltip: 'المحفوظات',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const SavedPage()),
+              if (onOpenMenu != null) ...[
+                Pressable(
+                  onTap: onOpenMenu,
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: scheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: scheme.outlineVariant),
+                    ),
+                    child: Icon(
+                      Icons.menu_rounded,
+                      size: 21,
+                      color: scheme.onSurface,
+                    ),
+                  ),
                 ),
-                icon: const Icon(Icons.bookmarks_outlined),
-              ),
-              IconButton(
-                tooltip: 'الإعدادات',
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const SettingsPage()),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.headlineSmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                icon: const Icon(Icons.tune_rounded),
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           ValueListenableBuilder<TextEditingValue>(
             valueListenable: controller,
-            builder: (context, value, _) => TextField(
-              controller: controller,
-              focusNode: focus,
-              autofocus: true,
-              textInputAction: TextInputAction.search,
-              onChanged: onChanged,
-              onSubmitted: onSubmitted,
-              style: theme.textTheme.headlineSmall,
-              decoration: InputDecoration(
-                hintText: 'ابحث عن كلمة…',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: value.text.isEmpty
-                    ? null
-                    : IconButton(
-                        tooltip: 'مسح',
-                        icon: const Icon(Icons.close_rounded),
-                        onPressed: onClear,
-                      ),
-                contentPadding: const EdgeInsets.symmetric(
-                  vertical: 16,
-                  horizontal: 12,
+            builder: (context, value, _) => Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: QamusTheme.shadow(scheme, strength: 0.6),
+              ),
+              child: TextField(
+                controller: controller,
+                focusNode: focus,
+                textInputAction: TextInputAction.search,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                style: theme.textTheme.headlineSmall,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  prefixIcon: Icon(Icons.search_rounded, color: scheme.primary),
+                  suffixIcon: AnimatedScale(
+                    scale: value.text.isEmpty ? 0 : 1,
+                    duration: const Duration(milliseconds: 200),
+                    child: IconButton(
+                      tooltip: clearLabel,
+                      icon: const Icon(Icons.cancel_rounded),
+                      onPressed: onClear,
+                    ),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 16,
+                    horizontal: 12,
+                  ),
                 ),
               ),
             ),
@@ -243,6 +297,7 @@ class _Header extends StatelessWidget {
 class _ModeBar extends StatelessWidget {
   const _ModeBar({
     required this.mode,
+    required this.labelOf,
     required this.onModeChanged,
     required this.bookLabel,
     required this.booksFiltered,
@@ -250,6 +305,7 @@ class _ModeBar extends StatelessWidget {
   });
 
   final SearchMode mode;
+  final String Function(SearchMode) labelOf;
   final ValueChanged<SearchMode> onModeChanged;
   final String bookLabel;
   final bool booksFiltered;
@@ -258,43 +314,128 @@ class _ModeBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
     return SizedBox(
-      height: 46,
+      height: 50,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         children: [
-          ActionChip(
-            avatar: Icon(
-              booksFiltered
-                  ? Icons.filter_alt_rounded
-                  : Icons.library_books_outlined,
-              size: 17,
-              color: booksFiltered ? theme.colorScheme.primary : null,
+          Center(
+            child: Pressable(
+              onTap: onBooks,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 13,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: booksFiltered
+                      ? QamusTheme.violet.withValues(alpha: 0.13)
+                      : scheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(
+                    color: booksFiltered
+                        ? QamusTheme.violet.withValues(alpha: 0.4)
+                        : scheme.outlineVariant,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      booksFiltered
+                          ? Icons.filter_alt_rounded
+                          : Icons.library_books_rounded,
+                      size: 16,
+                      color: booksFiltered
+                          ? QamusTheme.violet
+                          : scheme.onSurfaceVariant,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(
+                      bookLabel,
+                      textDirection: booksFiltered ? TextDirection.rtl : null,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: booksFiltered
+                            ? QamusTheme.violet
+                            : scheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            label: Text(bookLabel),
-            onPressed: onBooks,
-            backgroundColor: booksFiltered
-                ? theme.colorScheme.primaryContainer
-                : null,
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            child: VerticalDivider(
-              width: 1,
-              color: theme.colorScheme.outlineVariant,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 12),
+            child: VerticalDivider(width: 1, color: scheme.outlineVariant),
           ),
           for (final option in SearchMode.values)
             Padding(
               padding: const EdgeInsetsDirectional.only(end: 8),
-              child: ChoiceChip(
-                label: Text(option.label),
-                selected: option == mode,
-                onSelected: (_) => onModeChanged(option),
+              child: Center(
+                child: _ModePill(
+                  label: labelOf(option),
+                  selected: option == mode,
+                  onTap: () => onModeChanged(option),
+                ),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ModePill extends StatelessWidget {
+  const _ModePill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Pressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: selected ? QamusTheme.gradient(QamusTheme.violet) : null,
+          color: selected ? null : scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: selected ? Colors.transparent : scheme.outlineVariant,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: QamusTheme.violet.withValues(alpha: 0.32),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: selected ? Colors.white : scheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -304,10 +445,12 @@ class _ModeBar extends StatelessWidget {
 
 class _Results extends StatelessWidget {
   const _Results({
+    super.key,
     required this.results,
     required this.searching,
     required this.query,
     required this.mode,
+    required this.modeLabel,
     required this.onOpen,
   });
 
@@ -315,60 +458,67 @@ class _Results extends StatelessWidget {
   final bool searching;
   final String query;
   final SearchMode mode;
+  final String modeLabel;
   final ValueChanged<String> onOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = context.str;
+
     if (results.isEmpty) {
       return EmptyNote(
         icon: searching
-            ? Icons.hourglass_empty_rounded
+            ? Icons.hourglass_top_rounded
             : Icons.search_off_rounded,
-        title: searching ? 'جارٍ البحث…' : 'لا توجد نتائج',
-        detail: searching
-            ? null
-            : 'جرّب نمط بحث آخر، أو وسّع نطاق المعاجم المحدّدة',
+        title: searching ? strings.searchingLabel : strings.noResults,
+        detail: searching ? null : strings.noResultsDetail,
       );
     }
 
-    final scope = Qamus.of(context);
+    final scope = context.qamus;
     return ListView.separated(
-      padding: const EdgeInsets.only(bottom: 96),
+      padding: const EdgeInsets.fromLTRB(18, 4, 18, 150),
       itemCount: results.length + 1,
-      separatorBuilder: (_, _) =>
-          const Divider(height: 1, indent: 20, endIndent: 20),
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         if (index == 0) {
           return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 14, 20, 10),
+            padding: const EdgeInsets.fromLTRB(4, 6, 4, 12),
             child: Text(
-              '${countedEntries(results.length)} · ${mode.label} «$query»',
+              strings.resultHeader(results.length, modeLabel, query),
               style: theme.textTheme.titleSmall,
             ),
           );
         }
         final item = results[index - 1];
-        return _ResultTile(
-          item: item,
-          query: query,
-          mode: mode,
-          onTap: () => onOpen(item.key),
-          books: item.bookIds
-              .map((id) => scope.dictionary.book(id)?.name ?? '')
-              .where((n) => n.isNotEmpty)
-              .toList(),
+        final accent = bookColor(item.bookIds.first, theme.colorScheme);
+        return FadeSlideIn(
+          delay: Duration(milliseconds: 16 * (index - 1).clamp(0, 12)),
+          offset: const Offset(0, 0.06),
+          child: _ResultCard(
+            item: item,
+            query: query,
+            mode: mode,
+            accent: accent,
+            onTap: () => onOpen(item.key),
+            books: item.bookIds
+                .map((id) => scope.dictionary.book(id)?.name ?? '')
+                .where((n) => n.isNotEmpty)
+                .toList(),
+          ),
         );
       },
     );
   }
 }
 
-class _ResultTile extends StatelessWidget {
-  const _ResultTile({
+class _ResultCard extends StatelessWidget {
+  const _ResultCard({
     required this.item,
     required this.query,
     required this.mode,
+    required this.accent,
     required this.onTap,
     required this.books,
   });
@@ -376,77 +526,88 @@ class _ResultTile extends StatelessWidget {
   final Headword item;
   final String query;
   final SearchMode mode;
+  final Color accent;
   final VoidCallback onTap;
   final List<String> books;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return InkWell(
+    final scheme = theme.colorScheme;
+    final strings = context.str;
+
+    return SurfaceCard(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _Highlighted(
-                    word: item.word,
-                    key_: item.key,
-                    query: query,
-                    mode: mode,
-                    style: theme.textTheme.headlineSmall!,
-                  ),
-                  const SizedBox(height: 2),
-                  Row(
-                    children: [
-                      Text(
-                        countedSenses(item.senseCount),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 13),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 40,
+            decoration: BoxDecoration(
+              color: accent,
+              borderRadius: BorderRadius.circular(3),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _Highlighted(
+                  word: item.word,
+                  entryKey: item.key,
+                  query: query,
+                  mode: mode,
+                  style: theme.textTheme.headlineSmall!,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Text(
+                      strings.senses(item.senseCount),
+                      style: theme.textTheme.labelSmall,
+                    ),
+                    const SizedBox(width: 8),
+                    BookDots(bookIds: item.bookIds),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        books.join(' · '),
+                        textDirection: TextDirection.rtl,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.labelSmall,
                       ),
-                      const SizedBox(width: 8),
-                      BookDots(bookIds: item.bookIds),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          books.join(' · '),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.labelSmall,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            Icon(
-              Icons.chevron_left_rounded,
-              color: theme.colorScheme.outlineVariant,
-            ),
-          ],
-        ),
+          ),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: scheme.onSurfaceVariant.withValues(alpha: 0.5),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// Underlines the part of the headword the query actually matched, which is
+/// Picks out the part of the headword the query actually matched, which is
 /// what makes an "ends with" search legible at a glance.
 class _Highlighted extends StatelessWidget {
   const _Highlighted({
     required this.word,
-    required this.key_,
+    required this.entryKey,
     required this.query,
     required this.mode,
     required this.style,
   });
 
   final String word;
-  final String key_;
+  final String entryKey;
   final String query;
   final SearchMode mode;
   final TextStyle style;
@@ -456,12 +617,12 @@ class _Highlighted extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final match = switch (mode) {
       SearchMode.starts => (0, query.length),
-      SearchMode.ends => (key_.length - query.length, key_.length),
+      SearchMode.ends => (entryKey.length - query.length, entryKey.length),
       SearchMode.contains => () {
-        final at = key_.indexOf(query);
+        final at = entryKey.indexOf(query);
         return at < 0 ? (0, 0) : (at, at + query.length);
       }(),
-      SearchMode.exact || SearchMode.root => (0, key_.length),
+      SearchMode.exact || SearchMode.root => (0, entryKey.length),
     };
 
     // The display word carries diacritics the key does not, so walk both in
@@ -497,245 +658,14 @@ class _Highlighted extends StatelessWidget {
     }
     flush();
 
+    // The corpus is Arabic whatever the interface language is, so its
+    // direction is pinned rather than inherited from the page.
     return Text.rich(
       TextSpan(children: spans),
       style: style,
+      textDirection: TextDirection.rtl,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-    );
-  }
-}
-
-// --------------------------------------------------------------- the landing
-
-class _Landing extends StatelessWidget {
-  const _Landing({required this.onOpen, required this.onSearch});
-
-  final ValueChanged<String> onOpen;
-  final ValueChanged<String> onSearch;
-
-  @override
-  Widget build(BuildContext context) {
-    final scope = Qamus.of(context);
-    final settings = scope.settings;
-    final theme = Theme.of(context);
-    final history = settings.history;
-    final favourites = settings.favourites;
-
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(20, 4, 20, 40),
-      children: [
-        _Stats(
-          entries: scope.dictionary.entryCount,
-          roots: scope.dictionary.rootCount,
-          books: scope.dictionary.books.length,
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            Expanded(
-              child: _Tile(
-                icon: Icons.account_tree_outlined,
-                title: 'تصفّح الجذور',
-                detail: 'ادخل إلى المعجم من جذوره',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(builder: (_) => const RootsPage()),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _Tile(
-                icon: Icons.travel_explore_rounded,
-                title: 'بحث في المعاني',
-                detail: 'فتّش داخل نصّ الشروح كلّها',
-                onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const DeepSearchPage(),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (favourites.isNotEmpty) ...[
-          const SectionTitle('المحفوظة', icon: Icons.bookmark_outline_rounded),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final record in favourites.take(14))
-                Builder(
-                  builder: (context) {
-                    final item = decodeRecord(record);
-                    return WordPill(
-                      word: item.word,
-                      onTap: () => onOpen(item.key),
-                      emphasised: true,
-                    );
-                  },
-                ),
-            ],
-          ),
-        ],
-        if (history.isNotEmpty) ...[
-          SectionTitle(
-            'آخر ما بحثت عنه',
-            icon: Icons.history_rounded,
-            trailing: TextButton(
-              onPressed: settings.clearHistory,
-              child: const Text('مسح'),
-            ),
-          ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              for (final record in history.take(18))
-                Builder(
-                  builder: (context) {
-                    final item = decodeRecord(record);
-                    return WordPill(
-                      word: item.word,
-                      onTap: () => onOpen(item.key),
-                    );
-                  },
-                ),
-            ],
-          ),
-        ],
-        const SectionTitle('من كنوز اللغة', icon: Icons.auto_awesome_outlined),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final word in _sampler)
-              WordPill(word: word, onTap: () => onSearch(word)),
-          ],
-        ),
-        const SizedBox(height: 28),
-        Text(
-          'نمط «ينتهي بـ» يجد القوافي والأوزان: اكتب «يب» لترى كل ما ينتهي بها.',
-          style: theme.textTheme.bodySmall,
-        ),
-      ],
-    );
-  }
-}
-
-const _sampler = [
-  'سَلْسَبِيل',
-  'غَيْهَب',
-  'أُفُق',
-  'إِزْمِيل',
-  'رَصِين',
-  'تَبَتُّل',
-  'خَنْدَرِيس',
-  'يَنْبُوع',
-  'أَصِيل',
-  'دَيْجُور',
-];
-
-({String key, String word}) decodeRecord(String record) {
-  final at = record.indexOf(' ');
-  if (at < 0) return (key: record, word: record);
-  return (key: record.substring(0, at), word: record.substring(at + 1));
-}
-
-class _Stats extends StatelessWidget {
-  const _Stats({
-    required this.entries,
-    required this.roots,
-    required this.books,
-  });
-
-  final int entries;
-  final int roots;
-  final int books;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    Widget cell(String value, String label) => Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: theme.textTheme.headlineSmall?.copyWith(
-              color: theme.colorScheme.primary,
-              fontSize: 24,
-            ),
-          ),
-          Text(label, style: theme.textTheme.labelSmall),
-        ],
-      ),
-    );
-
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [
-            theme.colorScheme.primary.withValues(alpha: 0.07),
-            QamusTheme.gold.withValues(alpha: 0.05),
-          ],
-        ),
-      ),
-      child: Row(
-        children: [
-          cell(arabicNumber(entries), 'مدخلًا'),
-          cell(arabicNumber(roots), 'جذرًا'),
-          cell(arabicNumber(books), 'معجمًا'),
-        ],
-      ),
-    );
-  }
-}
-
-class _Tile extends StatelessWidget {
-  const _Tile({
-    required this.icon,
-    required this.title,
-    required this.detail,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String title;
-  final String detail;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Material(
-      color: theme.colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: theme.colorScheme.primary),
-              const SizedBox(height: 12),
-              Text(title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: 2),
-              Text(detail, style: theme.textTheme.labelSmall),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

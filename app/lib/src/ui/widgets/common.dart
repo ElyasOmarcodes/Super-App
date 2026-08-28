@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../data/models.dart';
 import '../../theme.dart';
+import 'motion.dart';
 
 /// Small pill naming the source dictionary an entry came from.
 class BookChip extends StatelessWidget {
@@ -16,18 +17,19 @@ class BookChip extends StatelessWidget {
     final color = bookColor(book.id, scheme);
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: dense ? 7 : 10,
+        horizontal: dense ? 8 : 11,
         vertical: dense ? 2 : 4,
       ),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        color: color.withValues(alpha: 0.13),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: color.withValues(alpha: 0.34)),
       ),
       child: Text(
         book.name,
+        textDirection: TextDirection.rtl,
         style: TextStyle(
-          fontFamily: QamusTheme.ui,
+          fontFamily: QamusTheme.font,
           fontSize: dense ? 10.5 : 12,
           height: 1.5,
           fontWeight: FontWeight.w500,
@@ -67,29 +69,45 @@ class BookDots extends StatelessWidget {
   }
 }
 
-/// A section heading with a hairline rule, used throughout the entry page.
+/// A section heading with a hairline rule, used throughout the app.
 class SectionTitle extends StatelessWidget {
-  const SectionTitle(this.title, {super.key, this.trailing, this.icon});
+  const SectionTitle(
+    this.title, {
+    super.key,
+    this.trailing,
+    this.icon,
+    this.tint,
+  });
 
   final String title;
   final Widget? trailing;
   final IconData? icon;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colour = tint ?? theme.colorScheme.primary;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 26, 4, 12),
+      padding: const EdgeInsets.fromLTRB(2, 24, 2, 12),
       child: Row(
         children: [
           if (icon != null) ...[
-            Icon(icon, size: 17, color: theme.colorScheme.onSurfaceVariant),
-            const SizedBox(width: 8),
+            Container(
+              width: 26,
+              height: 26,
+              decoration: BoxDecoration(
+                color: colour.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 15, color: colour),
+            ),
+            const SizedBox(width: 9),
           ],
           Text(title, style: theme.textTheme.titleMedium),
           const SizedBox(width: 12),
           Expanded(child: Divider(color: theme.colorScheme.outlineVariant)),
-          if (trailing != null) ...[const SizedBox(width: 12), trailing!],
+          if (trailing != null) ...[const SizedBox(width: 8), trailing!],
         ],
       ),
     );
@@ -104,46 +122,52 @@ class WordPill extends StatelessWidget {
     required this.onTap,
     this.subtitle,
     this.emphasised = false,
+    this.tint,
   });
 
   final String word;
   final String? subtitle;
   final bool emphasised;
+  final Color? tint;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    return Material(
-      color: emphasised ? scheme.primaryContainer : scheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: scheme.outlineVariant),
+    final colour = tint ?? scheme.primary;
+
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+        decoration: BoxDecoration(
+          color: emphasised
+              ? colour.withValues(alpha: 0.12)
+              : scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: emphasised
+                ? colour.withValues(alpha: 0.38)
+                : scheme.outlineVariant,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                word,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontSize: 19,
-                  color: emphasised
-                      ? scheme.onPrimaryContainer
-                      : scheme.onSurface,
-                ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              word,
+              // Arabic content, pinned RTL even when the interface is English.
+              textDirection: TextDirection.rtl,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontSize: 18,
+                color: emphasised ? colour : scheme.onSurface,
               ),
-              if (subtitle != null)
-                Text(subtitle!, style: theme.textTheme.labelSmall),
-            ],
-          ),
+            ),
+            if (subtitle != null)
+              Text(subtitle!, style: theme.textTheme.labelSmall),
+          ],
         ),
       ),
     );
@@ -158,39 +182,56 @@ class EmptyNote extends StatelessWidget {
     required this.title,
     this.detail,
     this.action,
+    this.tint,
   });
 
   final IconData icon;
   final String title;
   final String? detail;
   final Widget? action;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final colour = tint ?? theme.colorScheme.primary;
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 48),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 46, color: theme.colorScheme.outlineVariant),
-            const SizedBox(height: 18),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.titleMedium,
-            ),
-            if (detail != null) ...[
-              const SizedBox(height: 8),
-              Text(
-                detail!,
-                textAlign: TextAlign.center,
-                style: theme.textTheme.bodySmall,
+      child: FadeSlideIn(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 44),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 86,
+                height: 86,
+                decoration: BoxDecoration(
+                  color: colour.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: 38,
+                  color: colour.withValues(alpha: 0.8),
+                ),
               ),
+              const SizedBox(height: 20),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.titleMedium,
+              ),
+              if (detail != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  detail!,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+              if (action != null) ...[const SizedBox(height: 20), action!],
             ],
-            if (action != null) ...[const SizedBox(height: 20), action!],
-          ],
+          ),
         ),
       ),
     );

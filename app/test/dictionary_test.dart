@@ -2,11 +2,12 @@
 library;
 
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qamus/src/data/arabic.dart';
-import 'package:qamus/src/data/bootstrap.dart';
+import 'package:qamus/src/data/corpus.dart';
 import 'package:qamus/src/data/dictionary.dart';
 import 'package:qamus/src/data/models.dart';
 
@@ -19,18 +20,19 @@ void main() {
 
   setUpAll(() async {
     workspace = Directory.systemTemp.createTempSync('qamus-test');
-    final asset = File('assets/db/qamus.db.xz');
+    final asset = File('assets/db/qamus.corpus.xz');
     expect(
       asset.existsSync(),
       isTrue,
-      reason: 'the packed database must ship with the app',
+      reason: 'the packed corpus must ship with the app',
     );
 
     final target = '${workspace.path}/qamus.db';
-    File(
+    buildDatabase(
+      Uint8List.fromList(XZDecoder().decodeBytes(asset.readAsBytesSync())),
       target,
-    ).writeAsBytesSync(XZDecoder().decodeBytes(asset.readAsBytesSync()));
-    prepareDatabase(target, (_, _) {});
+      (_, _) {},
+    );
     dictionary = await Dictionary.open(target);
     allBooks = dictionary.books.map((b) => b.id).toSet();
   });

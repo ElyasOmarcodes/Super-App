@@ -6,4 +6,5 @@ __pycache__/
 # app/assets/db is what the app actually ships. See tools/build_db.py.
 *.db
 *.db.xz
-!app/assets/db/qamus.db.xz
+*.corpus
+!app/assets/db/qamus.corpus.xz

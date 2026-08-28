@@ -5,12 +5,15 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'data/bootstrap.dart';
 import 'data/dictionary.dart';
 import 'data/settings.dart';
+import 'l10n/locales.dart';
+import 'l10n/strings.dart';
 import 'theme.dart';
-import 'ui/home_page.dart';
+import 'ui/onboarding/onboarding_flow.dart';
 import 'ui/setup_page.dart';
+import 'ui/shell.dart';
 
-/// Hands the opened dictionary and the user's settings down the tree without
-/// pulling in a state-management package.
+/// Hands the opened dictionary, the user's settings and the active
+/// translations down the tree without pulling in a state-management package.
 class Qamus extends InheritedNotifier<Settings> {
   const Qamus({
     super.key,
@@ -23,6 +26,10 @@ class Qamus extends InheritedNotifier<Settings> {
 
   Settings get settings => notifier!;
 
+  AppLocale get locale => settings.appLocale;
+
+  Strings get strings => Strings(settings.appLocale);
+
   static Qamus of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<Qamus>();
     assert(scope != null, 'No Qamus scope found in the widget tree');
@@ -32,6 +39,12 @@ class Qamus extends InheritedNotifier<Settings> {
   @override
   bool updateShouldNotify(covariant Qamus oldWidget) =>
       dictionary != oldWidget.dictionary || super.updateShouldNotify(oldWidget);
+}
+
+/// Shorthand for the two things almost every widget needs.
+extension QamusContext on BuildContext {
+  Strings get str => Qamus.of(this).strings;
+  Qamus get qamus => Qamus.of(this);
 }
 
 class QamusApp extends StatefulWidget {
@@ -84,28 +97,40 @@ class _QamusAppState extends State<QamusApp> {
     super.dispose();
   }
 
-  /// The whole app reads right to left, whatever the host platform's locale.
-  ///
-  /// This also binds Escape to "go back", which desktop users reach for long
-  /// before they look for the arrow in the corner. The navigator is addressed
-  /// through its key because this builder runs *above* the Navigator, where
-  /// `Navigator.of` would find nothing.
-  Widget _shell(BuildContext context, Widget? child) => Directionality(
-    textDirection: TextDirection.rtl,
-    child: MediaQuery.withClampedTextScaling(
-      minScaleFactor: 1,
-      maxScaleFactor: 1.3,
-      child: CallbackShortcuts(
-        bindings: {
-          const SingleActivator(LogicalKeyboardKey.escape): () {
-            final navigator = _navigator.currentState;
-            if (navigator != null && navigator.canPop()) navigator.pop();
-          },
-        },
-        child: Focus(autofocus: true, child: child ?? const SizedBox.shrink()),
-      ),
-    ),
-  );
+  /// Applies the chosen language's reading direction and binds Escape to
+  /// "go back", which desktop users reach for long before they look for the
+  /// arrow in the corner. The navigator is addressed through its key because
+  /// this builder runs *above* the Navigator.
+  TransitionBuilder _shell(AppLocale locale) =>
+      (BuildContext context, Widget? child) {
+        return Directionality(
+          textDirection: locale.textDirection,
+          child: MediaQuery.withClampedTextScaling(
+            minScaleFactor: 1,
+            maxScaleFactor: 1.3,
+            child: CallbackShortcuts(
+              bindings: {
+                const SingleActivator(LogicalKeyboardKey.escape): () {
+                  final navigator = _navigator.currentState;
+                  if (navigator != null && navigator.canPop()) navigator.pop();
+                },
+              },
+              child: Focus(
+                autofocus: true,
+                // On a wide desktop window the app keeps a comfortable
+                // reading column rather than stretching a phone layout
+                // across two thousand pixels.
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 980),
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      };
 
   @override
   Widget build(BuildContext context) {
@@ -114,14 +139,14 @@ class _QamusAppState extends State<QamusApp> {
 
     if (dictionary == null || settings == null) {
       return MaterialApp(
-        title: 'قاموس المعاني',
+        title: 'Qamus',
         debugShowCheckedModeBanner: false,
         theme: QamusTheme.light(),
         darkTheme: QamusTheme.dark(),
         localizationsDelegates: _delegates,
-        locale: const Locale('ar'),
-        supportedLocales: _locales,
-        builder: _shell,
+        locale: AppLocale.ar.locale,
+        supportedLocales: _supported,
+        builder: _shell(AppLocale.ar),
         home: SetupPage(
           progress: _bootstrap.progress,
           error: _error,
@@ -132,30 +157,37 @@ class _QamusAppState extends State<QamusApp> {
 
     // The scope sits *above* MaterialApp so that every pushed route — which is
     // a sibling of `home` under the Navigator, not a descendant — can still
-    // reach the dictionary and the settings.
+    // reach the dictionary, the settings and the translations.
     return Qamus(
       dictionary: dictionary,
       settings: settings,
       child: Builder(
-        builder: (context) => MaterialApp(
-          title: 'قاموس المعاني',
-          debugShowCheckedModeBanner: false,
-          theme: QamusTheme.light(),
-          darkTheme: QamusTheme.dark(),
-          themeMode: Qamus.of(context).settings.themeMode,
-          localizationsDelegates: _delegates,
-          locale: const Locale('ar'),
-          supportedLocales: _locales,
-          navigatorKey: _navigator,
-          builder: _shell,
-          home: const HomePage(),
-        ),
+        builder: (context) {
+          final scope = Qamus.of(context);
+          final locale = scope.locale;
+          final needsOnboarding =
+              scope.settings.chosenLocale == null || !scope.settings.onboarded;
+
+          return MaterialApp(
+            title: scope.strings.appName,
+            debugShowCheckedModeBanner: false,
+            theme: QamusTheme.light(),
+            darkTheme: QamusTheme.dark(),
+            themeMode: scope.settings.themeMode,
+            localizationsDelegates: _delegates,
+            locale: locale.locale,
+            supportedLocales: _supported,
+            navigatorKey: _navigator,
+            builder: _shell(locale),
+            home: needsOnboarding ? const OnboardingFlow() : const AppShell(),
+          );
+        },
       ),
     );
   }
 }
 
-const _locales = [Locale('ar'), Locale('en')];
+final _supported = [for (final l in AppLocale.values) l.locale];
 
 const _delegates = [
   GlobalMaterialLocalizations.delegate,

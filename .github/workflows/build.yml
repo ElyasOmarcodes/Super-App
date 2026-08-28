@@ -82,19 +82,36 @@ jobs:
             --obfuscate --split-debug-info=build/symbols \
             --tree-shake-icons
 
-      - name: pack
+      # The arm64 APK is what almost every phone in use actually needs, so it
+      # is published on its own rather than buried in an archive with the
+      # other ABIs and the bundle.
+      - name: pack the arm64 apk
         run: |
-          mkdir -p out
-          cp app/build/app/outputs/flutter-apk/*.apk out/
-          cp app/build/app/outputs/bundle/release/*.aab out/
-          tar -C out -cf - . | xz -9e --threads=0 > qamus-android.tar.xz
-          ls -lh out qamus-android.tar.xz
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk .
+          xz -9e --threads=0 --keep --force app-arm64-v8a-release.apk
+          ls -lh app-arm64-v8a-release.apk*
 
       - uses: actions/upload-artifact@v4
         with:
-          name: qamus-android
-          path: qamus-android.tar.xz
+          name: qamus-arm64-apk
+          path: app-arm64-v8a-release.apk.xz
           compression-level: 0        # the payload is already xz'd
+          if-no-files-found: error
+
+      - name: pack the remaining builds
+        run: |
+          mkdir -p out
+          cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk out/
+          cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk out/
+          cp app/build/app/outputs/bundle/release/*.aab out/
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-android-other.tar.xz
+          ls -lh out qamus-android-other.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-android-other
+          path: qamus-android-other.tar.xz
+          compression-level: 0
           if-no-files-found: error
 
   # ---------------------------------------------------------------- windows

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../theme.dart';
-import 'format.dart';
+import 'widgets/motion.dart';
 
 /// Lets the reader restrict every search to a chosen set of source books —
 /// the whole shelf, one معجم, or any combination.
@@ -20,7 +20,8 @@ class _BooksSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scope = Qamus.of(context);
+    final scope = context.qamus;
+    final strings = context.str;
     final settings = scope.settings;
     final theme = Theme.of(context);
     final selected = settings.selectedBooks;
@@ -34,20 +35,18 @@ class _BooksSheet extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text('المعاجم', style: theme.textTheme.titleLarge),
+                Text(strings.lexicons, style: theme.textTheme.titleLarge),
                 const Spacer(),
-                TextButton(
+                TextButton.icon(
                   onPressed: settings.allBooksSelected
                       ? null
                       : settings.selectAllBooks,
-                  child: const Text('تحديد الكل'),
+                  icon: const Icon(Icons.done_all_rounded, size: 18),
+                  label: Text(strings.selectAll),
                 ),
               ],
             ),
-            Text(
-              'يقتصر البحث على المعاجم المحدّدة فقط',
-              style: theme.textTheme.bodySmall,
-            ),
+            Text(strings.lexiconsDetail, style: theme.textTheme.bodySmall),
             const SizedBox(height: 14),
             Flexible(
               child: ListView.separated(
@@ -58,32 +57,34 @@ class _BooksSheet extends StatelessWidget {
                   final book = scope.dictionary.books[index];
                   final on = selected.contains(book.id);
                   final color = bookColor(book.id, theme.colorScheme);
-                  return Material(
-                    color: on
-                        ? color.withValues(alpha: 0.10)
-                        : theme.colorScheme.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
+                  return FadeSlideIn(
+                    delay: Duration(milliseconds: 30 * index),
+                    child: Pressable(
                       onTap: () => settings.toggleBook(book.id),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
                         padding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 12,
                         ),
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
+                          color: on
+                              ? color.withValues(alpha: 0.10)
+                              : theme.colorScheme.surfaceContainerLowest,
+                          borderRadius: BorderRadius.circular(18),
                           border: Border.all(
                             color: on
-                                ? color.withValues(alpha: 0.5)
+                                ? color.withValues(alpha: 0.55)
                                 : theme.colorScheme.outlineVariant,
+                            width: on ? 1.5 : 1,
                           ),
                         ),
                         child: Row(
                           children: [
-                            Container(
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
                               width: 10,
-                              height: 34,
+                              height: on ? 40 : 26,
                               decoration: BoxDecoration(
                                 color: color.withValues(alpha: on ? 1 : 0.28),
                                 borderRadius: BorderRadius.circular(5),
@@ -96,13 +97,13 @@ class _BooksSheet extends StatelessWidget {
                                 children: [
                                   Text(
                                     book.name,
-                                    style: theme.textTheme.headlineSmall
-                                        ?.copyWith(fontSize: 19),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontSize: 16),
                                   ),
                                   Text(
-                                    '${arabicNumber(book.count)} ${countedEntries(book.count).split(' ').last} · '
-                                    '${book.isThesaurus ? 'مرادفات وأضداد' : 'شروح ومعانٍ'}',
-                                    style: theme.textTheme.bodySmall,
+                                    '${strings.entries(book.count)} · '
+                                    '${book.isThesaurus ? strings.thesaurus : strings.definitions}',
+                                    style: theme.textTheme.labelSmall,
                                   ),
                                 ],
                               ),
@@ -111,7 +112,7 @@ class _BooksSheet extends StatelessWidget {
                               value: on,
                               onChanged: (_) => settings.toggleBook(book.id),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(7),
                               ),
                             ),
                           ],

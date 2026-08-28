@@ -15,6 +15,13 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    androidResources {
+        // The corpus is already LZMA2-compressed. Letting the packager deflate
+        // it again costs build time, grows the APK slightly, and forces an
+        // inflate on every read; storing it verbatim avoids all three.
+        noCompress += listOf("xz")
+    }
+
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }

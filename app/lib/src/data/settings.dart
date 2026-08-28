@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../l10n/locales.dart';
 import 'models.dart';
 
 /// User preferences, search history and favourites.
@@ -20,6 +21,8 @@ class Settings extends ChangeNotifier {
   static const _kHistory = 'history';
   static const _kFavourites = 'favourites';
   static const _kVowels = 'showVowels';
+  static const _kLocale = 'locale';
+  static const _kOnboarded = 'onboarded';
 
   static Future<Settings> load(Iterable<int> allBookIds) async {
     final prefs = await SharedPreferences.getInstance();
@@ -62,6 +65,29 @@ class Settings extends ChangeNotifier {
   }
 
   Future<void> selectAllBooks() => setBooks({..._allBookIds});
+
+  // --------------------------------------------------------------- locale
+  /// Null until the reader picks a language on first launch, which is what
+  /// makes the language screen appear exactly once.
+  AppLocale? get chosenLocale {
+    final code = _prefs.getString(_kLocale);
+    return code == null ? null : AppLocale.fromCode(code);
+  }
+
+  AppLocale get appLocale => chosenLocale ?? AppLocale.ar;
+
+  Future<void> setLocale(AppLocale locale) async {
+    await _prefs.setString(_kLocale, locale.code);
+    notifyListeners();
+  }
+
+  /// False until the intro pages have been seen through.
+  bool get onboarded => _prefs.getBool(_kOnboarded) ?? false;
+
+  Future<void> setOnboarded(bool value) async {
+    await _prefs.setBool(_kOnboarded, value);
+    notifyListeners();
+  }
 
   // ---------------------------------------------------------------- display
   ThemeMode get themeMode =>

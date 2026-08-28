@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../app.dart';
 import '../data/models.dart';
-import 'format.dart';
 import 'entry_page.dart';
 import 'widgets/common.dart';
+import 'widgets/motion.dart';
 
 /// Browsing by triliteral root — the way a printed Arabic lexicon is actually
 /// organised. Pick a root, get every word derived from it.
@@ -46,8 +46,7 @@ class _RootsPageState extends State<RootsPage> {
   }
 
   void _refresh(String query) {
-    final dictionary = Qamus.of(context).dictionary;
-    setState(() => _roots = dictionary.roots(query));
+    setState(() => _roots = context.qamus.dictionary.roots(query));
   }
 
   void _onChanged(String value) {
@@ -56,20 +55,20 @@ class _RootsPageState extends State<RootsPage> {
   }
 
   void _select(({int id, String root, int count}) root) {
-    final dictionary = Qamus.of(context).dictionary;
     setState(() {
       _selected = (id: root.id, root: root.root);
-      _words = dictionary.byRootId(root.id, limit: 300);
+      _words = context.qamus.dictionary.byRootId(root.id, limit: 300);
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = context.str;
     final selected = _selected;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('الجذور')),
+      appBar: AppBar(title: Text(strings.rootsTitle)),
       body: Column(
         children: [
           Padding(
@@ -77,11 +76,12 @@ class _RootsPageState extends State<RootsPage> {
             child: TextField(
               controller: _controller,
               onChanged: _onChanged,
+              textDirection: TextDirection.rtl,
               style: theme.textTheme.headlineSmall,
-              decoration: const InputDecoration(
-                hintText: 'اكتب أوّل حروف الجذر…',
-                prefixIcon: Icon(Icons.account_tree_outlined),
-                contentPadding: EdgeInsets.symmetric(
+              decoration: InputDecoration(
+                hintText: strings.rootHint,
+                prefixIcon: const Icon(Icons.account_tree_rounded),
+                contentPadding: const EdgeInsets.symmetric(
                   vertical: 14,
                   horizontal: 12,
                 ),
@@ -89,11 +89,11 @@ class _RootsPageState extends State<RootsPage> {
             ),
           ),
           SizedBox(
-            height: 54,
+            height: 52,
             child: _roots.isEmpty
                 ? Center(
                     child: Text(
-                      'لا جذور مطابقة',
+                      strings.noRoots,
                       style: theme.textTheme.bodySmall,
                     ),
                   )
@@ -104,15 +104,15 @@ class _RootsPageState extends State<RootsPage> {
                     separatorBuilder: (_, _) => const SizedBox(width: 8),
                     itemBuilder: (context, index) {
                       final root = _roots[index];
-                      final on = selected?.id == root.id;
                       return ChoiceChip(
                         label: Text(
                           root.root,
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontSize: 18,
+                          textDirection: TextDirection.rtl,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 16,
                           ),
                         ),
-                        selected: on,
+                        selected: selected?.id == root.id,
                         onSelected: (_) => _select(root),
                       );
                     },
@@ -121,18 +121,19 @@ class _RootsPageState extends State<RootsPage> {
           const Divider(height: 20),
           Expanded(
             child: selected == null
-                ? const EmptyNote(
-                    icon: Icons.touch_app_outlined,
-                    title: 'اختر جذرًا',
-                    detail: 'ستظهر هنا كل الكلمات المشتقّة منه',
+                ? EmptyNote(
+                    icon: Icons.touch_app_rounded,
+                    title: strings.chooseRoot,
+                    detail: strings.chooseRootDetail,
                   )
                 : ListView(
                     padding: const EdgeInsets.fromLTRB(20, 0, 20, 40),
                     children: [
                       SectionTitle(
-                        'مشتقّات «${selected.root}»',
+                        strings.derivativesOf(selected.root),
+                        icon: Icons.account_tree_rounded,
                         trailing: Text(
-                          arabicNumber(_words.length),
+                          strings.n(_words.length),
                           style: theme.textTheme.labelSmall,
                         ),
                       ),
@@ -140,13 +141,19 @@ class _RootsPageState extends State<RootsPage> {
                         spacing: 8,
                         runSpacing: 8,
                         children: [
-                          for (final word in _words)
-                            WordPill(
-                              word: word.word,
-                              subtitle: countedSenses(word.senseCount),
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => EntryPage(entryKey: word.key),
+                          for (var i = 0; i < _words.length; i++)
+                            FadeSlideIn(
+                              delay: Duration(
+                                milliseconds: 12 * i.clamp(0, 16),
+                              ),
+                              child: WordPill(
+                                word: _words[i].word,
+                                subtitle: strings.senses(_words[i].senseCount),
+                                onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) =>
+                                        EntryPage(entryKey: _words[i].key),
+                                  ),
                                 ),
                               ),
                             ),

@@ -261,6 +261,35 @@ class Dictionary {
     return parts;
   }
 
+  /// A single entry chosen by [seed], with the opening line of its
+  /// definition — what the dashboard shows as the word of the day.
+  ///
+  /// Picking by row id rather than `ORDER BY RANDOM()` keeps this an O(1)
+  /// primary-key lookup instead of a full scan.
+  Featured? featured(int seed) {
+    final total = entryCount;
+    if (total == 0) return null;
+    final id = seed.abs() % total;
+    final rows = _db.select(
+      '''
+      SELECT e.id, e.k, e.w, e.b, r.r AS root
+      FROM entries e LEFT JOIN roots r ON r.id = e.rid
+      WHERE e.id = ?
+    ''',
+      [id],
+    );
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final lines = _splitSenses(definitionOf(row['id'] as int));
+    return Featured(
+      key: row['k'] as String,
+      word: row['w'] as String,
+      root: row['root'] as String?,
+      bookId: row['b'] as int,
+      preview: lines.isEmpty ? '' : lines.first,
+    );
+  }
+
   // ----------------------------------------------------------- deep search
 
   /// Sweeps every definition looking for [query].
@@ -306,6 +335,24 @@ class Dictionary {
 
     return controller.stream;
   }
+}
+
+/// The dashboard's word of the day.
+@immutable
+class Featured {
+  const Featured({
+    required this.key,
+    required this.word,
+    required this.bookId,
+    required this.preview,
+    this.root,
+  });
+
+  final String key;
+  final String word;
+  final String? root;
+  final int bookId;
+  final String preview;
 }
 
 @immutable

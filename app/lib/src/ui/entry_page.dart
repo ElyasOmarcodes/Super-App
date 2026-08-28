@@ -6,8 +6,9 @@ import '../data/arabic.dart';
 import '../data/models.dart';
 import '../theme.dart';
 import 'books_sheet.dart';
-import 'format.dart';
+import 'widgets/cards.dart';
 import 'widgets/common.dart';
+import 'widgets/motion.dart';
 
 /// One headword in full: every sense from every selected book, its root, its
 /// derivations, and the words that sit closest to it in the lexicon.
@@ -29,7 +30,7 @@ class _EntryPageState extends State<EntryPage> {
     super.didChangeDependencies();
     if (_loaded) return;
     _loaded = true;
-    final scope = Qamus.of(context);
+    final scope = context.qamus;
     // Look the entry up across every book: hiding senses that the reader
     // filtered out of *search* would make the page look broken.
     final detail = scope.dictionary.entry(widget.entryKey);
@@ -42,18 +43,20 @@ class _EntryPageState extends State<EntryPage> {
   @override
   Widget build(BuildContext context) {
     final detail = _detail;
+    final strings = context.str;
     final theme = Theme.of(context);
+
     if (detail == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const EmptyNote(
+        body: EmptyNote(
           icon: Icons.search_off_rounded,
-          title: 'لم يُعثر على هذا المدخل',
+          title: strings.notFound,
         ),
       );
     }
 
-    final scope = Qamus.of(context);
+    final scope = context.qamus;
     final settings = scope.settings;
     final isFavourite = settings.isFavourite(detail.key);
     final selected = settings.selectedBooks;
@@ -67,35 +70,46 @@ class _EntryPageState extends State<EntryPage> {
         slivers: [
           SliverAppBar(
             pinned: true,
-            expandedHeight: 168,
+            expandedHeight: 172,
             actions: [
               IconButton(
-                tooltip: isFavourite ? 'إزالة من المحفوظات' : 'حفظ',
+                tooltip: isFavourite ? strings.unsaveWord : strings.saveWord,
                 onPressed: () =>
                     settings.toggleFavourite(detail.key, detail.word),
-                icon: Icon(
-                  isFavourite
-                      ? Icons.bookmark_rounded
-                      : Icons.bookmark_outline_rounded,
-                  color: isFavourite ? theme.colorScheme.primary : null,
+                icon: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 260),
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: CurvedAnimation(
+                      parent: animation,
+                      curve: Curves.easeOutBack,
+                    ),
+                    child: child,
+                  ),
+                  child: Icon(
+                    isFavourite
+                        ? Icons.bookmark_rounded
+                        : Icons.bookmark_outline_rounded,
+                    key: ValueKey(isFavourite),
+                    color: isFavourite ? QamusTheme.rose : null,
+                  ),
                 ),
               ),
               IconButton(
-                tooltip: 'نسخ المدخل',
+                tooltip: strings.copyEntry,
                 onPressed: () => _copy(context, detail, scope),
-                icon: const Icon(Icons.copy_all_outlined),
+                icon: const Icon(Icons.copy_all_rounded),
               ),
               IconButton(
-                tooltip: 'المعاجم',
+                tooltip: strings.lexicons,
                 onPressed: () => showBooksSheet(context),
-                icon: const Icon(Icons.library_books_outlined),
+                icon: const Icon(Icons.library_books_rounded),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(
               titlePadding: const EdgeInsetsDirectional.only(
                 start: 20,
                 bottom: 14,
-                end: 96,
+                end: 130,
               ),
               title: Text(
                 detail.word,
@@ -110,8 +124,8 @@ class _EntryPageState extends State<EntryPage> {
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                 child: _Notice(
-                  text: '${countedSenses(hidden)} مخفيّة بسبب تصفية المعاجم',
-                  action: 'إظهار الكل',
+                  text: strings.hiddenSenses(hidden),
+                  action: strings.showAll,
                   onAction: settings.selectAllBooks,
                 ),
               ),
@@ -125,10 +139,13 @@ class _EntryPageState extends State<EntryPage> {
                 final book = scope.dictionary.book(sense.bookId);
                 final isFirstOfBook =
                     index == 0 || visible[index - 1].bookId != sense.bookId;
-                return _SenseCard(
-                  sense: sense,
-                  book: book,
-                  showBookHeader: isFirstOfBook,
+                return FadeSlideIn(
+                  delay: Duration(milliseconds: 45 * index.clamp(0, 8)),
+                  child: _SenseCard(
+                    sense: sense,
+                    book: book,
+                    showBookHeader: isFirstOfBook,
+                  ),
                 );
               },
             ),
@@ -136,20 +153,24 @@ class _EntryPageState extends State<EntryPage> {
           if (detail.sameRoot.isNotEmpty)
             SliverToBoxAdapter(
               child: _WordSection(
-                title: 'من الجذر «${detail.root}»',
-                icon: Icons.account_tree_outlined,
+                title: detail.root == null
+                    ? strings.fromRoot
+                    : strings.derivativesOf(detail.root!),
+                icon: Icons.account_tree_rounded,
+                tint: theme.colorScheme.primary,
                 words: detail.sameRoot,
               ),
             ),
           if (detail.similar.isNotEmpty)
             SliverToBoxAdapter(
               child: _WordSection(
-                title: 'كلمات مشابهة',
-                icon: Icons.blur_on_rounded,
+                title: strings.similarWords,
+                icon: Icons.hub_rounded,
+                tint: QamusTheme.amber,
                 words: detail.similar,
               ),
             ),
-          const SliverToBoxAdapter(child: SizedBox(height: 48)),
+          const SliverToBoxAdapter(child: SizedBox(height: 60)),
         ],
       ),
     );
@@ -157,7 +178,7 @@ class _EntryPageState extends State<EntryPage> {
 
   void _copy(BuildContext context, EntryDetail detail, Qamus scope) {
     final buffer = StringBuffer('${detail.word}\n');
-    if (detail.root != null) buffer.writeln('الجذر: ${detail.root}');
+    if (detail.root != null) buffer.writeln('${detail.root}');
     for (final sense in detail.senses) {
       buffer.writeln('\n[${scope.dictionary.book(sense.bookId)?.name ?? ''}]');
       for (final line in sense.lines) {
@@ -167,7 +188,7 @@ class _EntryPageState extends State<EntryPage> {
     Clipboard.setData(ClipboardData(text: buffer.toString()));
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('نُسخ المدخل إلى الحافظة')));
+    ).showSnackBar(SnackBar(content: Text(context.str.copied)));
   }
 }
 
@@ -179,14 +200,16 @@ class _Banner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final strings = context.str;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
+          begin: AlignmentDirectional.topStart,
+          end: AlignmentDirectional.bottomEnd,
           colors: [
-            theme.colorScheme.primary.withValues(alpha: 0.10),
-            QamusTheme.gold.withValues(alpha: 0.06),
+            QamusTheme.violet.withValues(alpha: 0.22),
+            QamusTheme.blue.withValues(alpha: 0.10),
             theme.colorScheme.surface,
           ],
         ),
@@ -196,7 +219,7 @@ class _Banner extends StatelessWidget {
           // The headword itself is drawn by the FlexibleSpaceBar title, which
           // scales it down as the bar collapses; the banner only adds the
           // metadata line that sits above it.
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 62),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 64),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -206,26 +229,32 @@ class _Banner extends StatelessWidget {
                   if (detail.root != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 3,
+                        horizontal: 11,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: QamusTheme.gold.withValues(alpha: 0.16),
-                        borderRadius: BorderRadius.circular(8),
+                        color: QamusTheme.violet.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(30),
                       ),
                       child: Text(
-                        'جذر ${detail.root}',
+                        strings.rootOf(detail.root!),
+                        textDirection: TextDirection.rtl,
                         style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.tertiary,
+                          color: QamusTheme.violet,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
                   ],
-                  Text(
-                    '${countedSenses(detail.senses.length)} في '
-                    '${countedBooks(detail.senses.map((s) => s.bookId).toSet().length)}',
-                    style: theme.textTheme.labelSmall,
+                  Flexible(
+                    child: Text(
+                      '${strings.senses(detail.senses.length)} · '
+                      '${strings.books(detail.senses.map((s) => s.bookId).toSet().length)}',
+                      style: theme.textTheme.labelSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -251,10 +280,11 @@ class _SenseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final settings = Qamus.of(context).settings;
+    final strings = context.str;
+    final settings = context.qamus.settings;
     final color = bookColor(sense.bookId, theme.colorScheme);
     final bodyStyle = theme.textTheme.bodyLarge!.copyWith(
-      fontSize: 20 * settings.textScale,
+      fontSize: 18 * settings.textScale,
     );
 
     return Column(
@@ -271,58 +301,57 @@ class _SenseCard extends StatelessWidget {
               ],
             ),
           ),
-        Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-          decoration: BoxDecoration(
-            color: theme.colorScheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: theme.colorScheme.outlineVariant),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                settings.showVowels ? sense.word : _bare(sense.word),
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  color: theme.colorScheme.primary,
-                  fontSize: 22 * settings.textScale,
-                ),
-              ),
-              const SizedBox(height: 8),
-              if (sense.lines.isEmpty)
-                Text('لا يوجد شرح مسجّل', style: theme.textTheme.bodySmall)
-              else
-                for (var i = 0; i < sense.lines.length; i++)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          margin: const EdgeInsetsDirectional.only(
-                            top: 12,
-                            end: 10,
-                          ),
-                          width: 5,
-                          height: 5,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.7),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        Expanded(
-                          child: SelectableText(
-                            settings.showVowels
-                                ? sense.lines[i]
-                                : _bare(sense.lines[i]),
-                            style: bodyStyle,
-                          ),
-                        ),
-                      ],
-                    ),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: SurfaceCard(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  settings.showVowels ? sense.word : stripMarks(sense.word),
+                  textDirection: TextDirection.rtl,
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    color: color,
+                    fontSize: 20 * settings.textScale,
                   ),
-            ],
+                ),
+                const SizedBox(height: 8),
+                if (sense.lines.isEmpty)
+                  Text(strings.noDefinition, style: theme.textTheme.bodySmall)
+                else
+                  for (var i = 0; i < sense.lines.length; i++)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            margin: const EdgeInsetsDirectional.only(
+                              top: 12,
+                              end: 10,
+                            ),
+                            width: 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.7),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          Expanded(
+                            child: SelectableText(
+                              settings.showVowels
+                                  ? sense.lines[i]
+                                  : stripMarks(sense.lines[i]),
+                              textDirection: TextDirection.rtl,
+                              style: bodyStyle,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
           ),
         ),
       ],
@@ -330,27 +359,28 @@ class _SenseCard extends StatelessWidget {
   }
 }
 
-String _bare(String text) => stripMarks(text);
-
 class _WordSection extends StatelessWidget {
   const _WordSection({
     required this.title,
     required this.icon,
+    required this.tint,
     required this.words,
   });
 
   final String title;
   final IconData icon;
+  final Color tint;
   final List<Headword> words;
 
   @override
   Widget build(BuildContext context) {
+    final strings = context.str;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SectionTitle(title, icon: icon),
+          SectionTitle(title, icon: icon, tint: tint),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -358,7 +388,7 @@ class _WordSection extends StatelessWidget {
               for (final word in words)
                 WordPill(
                   word: word.word,
-                  subtitle: countedSenses(word.senseCount),
+                  subtitle: strings.senses(word.senseCount),
                   onTap: () => Navigator.of(context).pushReplacement(
                     MaterialPageRoute<void>(
                       builder: (_) => EntryPage(entryKey: word.key),
@@ -391,7 +421,7 @@ class _Notice extends StatelessWidget {
       padding: const EdgeInsetsDirectional.fromSTEB(14, 4, 6, 4),
       decoration: BoxDecoration(
         color: theme.colorScheme.secondaryContainer.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
         children: [
