@@ -135,6 +135,11 @@ Regenerate the launcher icons after changing the mark:
 python3 tools/make_icons.py
 ```
 
+> **Flutter 3.47 or newer** is required to build for Windows. Current toolchains
+> ship Visual Studio 2026, and only 3.47+ maps that major version to the
+> `Visual Studio 18 2026` CMake generator; older Flutter detects the install,
+> then emits the 2019 generator and fails at configure time.
+>
 > Building for **Linux** additionally downloads the SQLite amalgamation through
 > CMake `FetchContent`, so that target needs network access at configure time.
 > Android, Windows and iOS use prebuilt or vendored SQLite and do not.

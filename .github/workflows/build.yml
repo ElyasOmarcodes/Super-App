@@ -13,7 +13,11 @@ on:
   workflow_dispatch:
 
 env:
-  FLUTTER_VERSION: '3.38.0'
+  # 3.47+ is required for the Windows job: GitHub's windows runners now ship
+  # Visual Studio 2026, and only Flutter 3.47 and later map that major version
+  # to the "Visual Studio 18 2026" CMake generator. Older Flutter detects the
+  # install happily and then emits the 2019 generator, which CMake rejects.
+  FLUTTER_VERSION: '3.47.2'
   XZ_OPT: '-9e --threads=0'
 
 concurrency:
@@ -110,17 +114,12 @@ jobs:
         working-directory: app
         run: flutter pub get
 
-      # Flutter picks the CMake generator from whatever Visual Studio it finds
-      # through vswhere, and silently falls back to "Visual Studio 16 2019"
-      # when it finds nothing — which then fails with a confusing error. Print
-      # both views so a detection failure is obvious in the log.
+      # Prints the Visual Studio version Flutter will build against; a mismatch
+      # here is what a "could not find any instance of Visual Studio" CMake
+      # error actually means. See the FLUTTER_VERSION comment above.
       - name: report toolchain
-        shell: bash
-        run: |
-          "$PROGRAMFILES (x86)/Microsoft Visual Studio/Installer/vswhere.exe" \
-            -products '*' -prerelease -format value \
-            -property installationVersion || echo 'vswhere found nothing'
-          flutter doctor -v
+        working-directory: app
+        run: flutter doctor -v
 
       - name: build
         working-directory: app
