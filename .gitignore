@@ -1,0 +1,9 @@
+# Python bytecode from the tooling in tools/
+__pycache__/
+*.pyc
+
+# Source corpora are not committed: they are large, and the packed database in
+# app/assets/db is what the app actually ships. See tools/build_db.py.
+*.db
+*.db.xz
+!app/assets/db/qamus.db.xz
