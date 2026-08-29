@@ -1,0 +1,275 @@
+name: build
+
+# Produces installable binaries for Android, Windows and iOS, then re-packs
+# each one as an .tar.xz archive compressed with LZMA2 at its extreme preset.
+# GitHub always serves artifacts inside a zip envelope; putting an already
+# maximally-compressed .tar.xz inside that zip is what keeps the download small.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # 3.47+ is required for the Windows job: GitHub's windows runners now ship
+  # Visual Studio 2026, and only Flutter 3.47 and later map that major version
+  # to the "Visual Studio 18 2026" CMake generator. Older Flutter detects the
+  # install happily and then emits the 2019 generator, which CMake rejects.
+  FLUTTER_VERSION: '3.47.2'
+  XZ_OPT: '-9e --threads=0'
+  # Stamped into the Windows installer. Kept in step with app/pubspec.yaml.
+  APP_VERSION: '1.3.0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------- analysis
+  check:
+    name: analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+      - name: verify formatting
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: analyze
+        working-directory: app
+        run: flutter analyze --fatal-infos
+      - name: test
+        working-directory: app
+        run: flutter test
+
+  # ---------------------------------------------------------------- android
+  android:
+    name: android
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # --split-per-abi keeps each APK to one architecture, which removes the
+      # other two copies of the Flutter engine from every download.
+      - name: build apks
+        working-directory: app
+        run: |
+          flutter build apk --release --split-per-abi \
+            --obfuscate --split-debug-info=build/symbols \
+            --tree-shake-icons
+          flutter build appbundle --release \
+            --obfuscate --split-debug-info=build/symbols \
+            --tree-shake-icons
+
+      # The arm64 APK is what almost every phone in use actually needs, so it
+      # is published on its own rather than buried in an archive with the
+      # other ABIs and the bundle.
+      - name: pack the arm64 apk
+        run: |
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk .
+          xz -9e --threads=0 --keep --force app-arm64-v8a-release.apk
+          ls -lh app-arm64-v8a-release.apk*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-arm64-apk
+          path: app-arm64-v8a-release.apk.xz
+          compression-level: 0        # the payload is already xz'd
+          if-no-files-found: error
+
+      - name: pack the remaining builds
+        run: |
+          mkdir -p out
+          cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk out/
+          cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk out/
+          cp app/build/app/outputs/bundle/release/*.aab out/
+          # Both halves of the build rename their symbols, and both leave a
+          # map behind. Without these a crash report from a release build is
+          # unreadable — they ship beside the binaries, never inside them.
+          mkdir -p out/symbols
+          cp -r app/build/symbols/. out/symbols/ 2>/dev/null || true
+          find app/build/app/outputs/mapping -name 'mapping.txt' \
+            -exec cp {} out/symbols/android-r8-mapping.txt \; 2>/dev/null || true
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-android-other.tar.xz
+          ls -lh out qamus-android-other.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-android-other
+          path: qamus-android-other.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- windows
+  windows:
+    name: windows
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # Prints the Visual Studio version Flutter will build against; a mismatch
+      # here is what a "could not find any instance of Visual Studio" CMake
+      # error actually means. See the FLUTTER_VERSION comment above.
+      - name: report toolchain
+        working-directory: app
+        run: flutter doctor -v
+
+      - name: build
+        working-directory: app
+        run: >
+          flutter build windows --release
+          --obfuscate --split-debug-info=build/symbols
+          --tree-shake-icons
+
+      - name: pack
+        shell: bash
+        run: |
+          # Several Release directories exist under build/windows (each plugin
+          # gets one); only the runner's holds the executable and its bundle.
+          release=app/build/windows/x64/runner/Release
+          [ -d "$release" ] || release=$(find app/build/windows -type d -path '*runner/Release' | head -n 1)
+          [ -x "$release/qamus.exe" ] || { echo "no runner bundle at $release"; exit 1; }
+          mkdir -p out/qamus
+          cp -r "$release"/* out/qamus/
+          rm -f out/qamus/*.pdb
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-windows.tar.xz
+          ls -lh qamus-windows.tar.xz
+
+      # One file that installs and runs on its own. Flutter's Windows output is
+      # an exe plus DLLs and a data/ tree, none of which works alone; Inno
+      # Setup (preinstalled on the runner) folds the lot into a single .exe.
+      - name: build the single-file installer
+        shell: pwsh
+        run: |
+          $release = "app/build/windows/x64/runner/Release"
+          if (-not (Test-Path "$release/qamus.exe")) {
+            throw "no runner bundle at $release"
+          }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found on this runner" }
+          $bundle = (Resolve-Path $release).Path
+          & $iscc /Qp "/DBundleDir=$bundle" "/DAppVersion=$env:APP_VERSION" `
+            "/O$((Resolve-Path .).Path)" app/windows/packaging/qamus.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+          Get-Item qamus-setup.exe | Format-List Name, Length
+
+      - name: compress the installer
+        shell: bash
+        run: |
+          xz -9e --threads=0 --keep --force qamus-setup.exe
+          ls -lh qamus-setup.exe.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-windows-exe
+          path: qamus-setup.exe.xz
+          compression-level: 0
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-windows
+          path: qamus-windows.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------- ios
+  ios:
+    name: ios
+    needs: check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # Unsigned: a signed build needs a paid Apple team, so CI produces the
+      # .app that a developer can sign locally or that sideloaders accept.
+      - name: build
+        working-directory: app
+        run: >
+          flutter build ios --release --no-codesign
+          --obfuscate --split-debug-info=build/symbols
+          --tree-shake-icons
+
+      - name: pack
+        run: |
+          mkdir -p out/Payload
+          cp -R app/build/ios/iphoneos/Runner.app out/Payload/
+          (cd out && zip -0 -qry ../qamus-unsigned.ipa Payload)
+          rm -rf out
+          mkdir -p out && mv qamus-unsigned.ipa out/
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-ios.tar.xz
+          ls -lh qamus-ios.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-ios
+          path: qamus-ios.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------ release
+  release:
+    name: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.tar.xz
+            artifacts/**/*.apk.xz
+            artifacts/**/*.exe.xz
+          generate_release_notes: true
