@@ -1,12 +1,13 @@
 # قاموس المعاني — Qamus al-Maani
 
 یو آفلاین عربي–عربي قاموس چې په ډارټ/فلټر کې لیکل شوی دی او د **وینډوز، اندروید او
-iOS** لپاره جوړېږي. ټول ۲۱۹٬۷۶۴ مدخلونه له شپږو معاجمو څخه — یو حرف هم نه دی
-حذف شوی — په ۱۰ MB کې بند دي. هېڅ انټرنټ ته اړتیا نشته.
+iOS** لپاره جوړېږي. ټول ۲۱۹٬۷۶۴ مدخلونه له شپږو معاجمو څخه، او د سرچینې ۱۷۶٬۰۳۶
+صرفي بڼې — یو حرف هم نه دی حذف شوی — په ۱۱ MB کې بند دي. هېڅ انټرنټ ته اړتیا نشته.
 
-An offline Arabic–Arabic dictionary: 219,764 entries from six lexicons, packed
-into a 9.9 MB asset with **not one character removed**, and an interface that
-speaks Pashto, Persian, Arabic and English.
+An offline Arabic–Arabic dictionary: 219,764 entries from six lexicons and the
+source's 176,036-form morphological index, packed into a 10.9 MB asset with
+**not one character removed**, and an interface that speaks Pashto, Persian,
+Arabic and English.
 
 ![the launcher mark](docs/icon.png)
 
@@ -49,17 +50,42 @@ speaks Pashto, Persian, Arabic and English.
 ## هیڅ شی نه دی حذف شوی / Nothing was removed
 
 خام ډېټابیس **۱۷۰.۶ MB** و او د xz په ultra موډ کې **۲۴.۵ MB** کېده. زمونږ فایل
-**۹.۹ MB** دی — خو **یو حرف هم کم نه دی**. دا په دې دلیل چې کمپریشن د بیرغونو
-(`-9e`, `pb=0`, لوی dictionary) پر ځای د **ترتیب** له لارې ترلاسه شو.
+**۱۰.۹ MB** دی — خو **یو حرف هم کم نه دی**، او د سرچینې دواړه جدولونه پکې دي.
 
-The source is 170.6 MB; `xz -9e` over it is 24.5 MB. The shipped file is 9.9 MB
-and every entry survives byte for byte. `tools/verify_db.py` proves it:
+The source is 170.6 MB; `xz -9e` over it is 24.5 MB. The shipped file is 10.9 MB
+and carries **both** of the source's tables. `tools/verify_db.py` proves it:
 
 ```
 $ python3 tools/verify_db.py AlmaanyArArV11.db app/assets/db/qamus.corpus.xz
-  IDENTICAL — all 219,764 entries and all 28,840,527 characters of
+  ENTRIES IDENTICAL — all 219,764 entries and all 28,840,527 characters of
   definition text round-trip byte for byte.
+  INDEX IDENTICAL — all 176,036 lookup forms and all 346,128 form-to-headword
+  links survive.
 ```
+
+### The two tables, and why both matter
+
+`wordTable` holds the 219,764 entries: 93,970 distinct headwords with their
+definitions.
+
+`Keys` is **not** a duplicate of it. It is the source's morphological lookup
+index: **176,036 surface forms** — plurals, conjugations, definite forms — each
+mapped to the headwords that explain it. **83,843 of those forms are not
+headwords themselves**, so without this table they cannot be looked up at all.
+
+| you type | the index resolves it to |
+|---|---|
+| `مهابل` | `مهبل` — a plural whose singular carries the definition |
+| `مهاب` | `أهاب` · `مهاب` · `مهب` · `هاب` · `هيبة` — five headwords, 28 senses |
+| `الرحيم` | `الرحيم` · `رحيم` — which is what makes the article transparent |
+
+That last row is why searching `رحيم` and `الرحيم` reach each other, and why the
+result still reads `الرَّحيم` rather than silently dropping the article.
+
+An earlier revision of this repo dropped `Keys` after measuring only its
+`wordkey` column, which really is mostly redundant. The column that carries the
+information is `searchwordkey`. Restoring the whole index costs **0.94 MB**
+compressed and nearly doubles what a reader can find, so it ships.
 
 ### Where the source's 170.6 MB went
 
@@ -69,10 +95,13 @@ $ python3 tools/verify_db.py AlmaanyArArV11.db app/assets/db/qamus.corpus.xz
 | headwords | 3.0 MB | **kept in full** |
 | roots | 1.3 MB | **kept in full** |
 | book attribution | 6.9 MB | **kept**, as a one-byte id per entry |
+| `Keys` | 12.8 MB | **kept**, as 176,036 forms and 346,128 links |
 | `searchword` | 2.0 MB | dropped — it is `word` with its diacritics removed |
 | `dict`, `id` | 3.6 MB | dropped — both derivable |
-| `Keys` | 12.8 MB | dropped — an autocomplete index. Its 94,302 headwords are the same 93,970 the entries already carry, plus 339 stubs that have **no definition anywhere in the file** |
 | the rest | ~89 MB | SQLite page overhead, indexes and free space |
+
+The 369 `Keys` links that point at a headword with no definition anywhere in
+the source are dropped too; they would be dead ends.
 
 ### Where the compression came from
 
@@ -83,7 +112,8 @@ dictionary all land within **0.2%** of the plain `-9e` preset. Layout was:
 |---:|---|
 | 15.2 MB | definitions deflated into blocks *before* shipping — already compressed, so xz could not touch them |
 | 12.3 MB | definitions stored as plain text inside a SQLite file |
-| **9.9 MB** | plain text in a **columnar container** — all the lengths together, then all the headwords, then all the definitions |
+| 9.9 MB | plain text in a **columnar container** — all the lengths together, then all the headwords, then all the definitions |
+| **10.9 MB** | the same, plus the morphological index restored |
 
 A SQLite file interleaves every column of every row across 4 KiB pages. Laid
 out columnar instead, xz sees long runs of like-shaped data, and the same
@@ -91,18 +121,18 @@ out columnar instead, xz sees long runs of like-shaped data, and the same
 neighbours share vocabulary and formatting — is worth another 9%.
 
 The definition blocks still exist; the app just builds them on the device on
-first launch instead of shipping them, along with the search keys and the four
-indexes. Everything that can be recomputed is, because recomputing is free and
-downloading is not.
+first launch instead of shipping them, along with the search keys, the form
+table and the seven indexes. Everything that can be recomputed is, because
+recomputing is free and downloading is not.
 
 ```
-app/assets/db/qamus.corpus.xz   9.9 MB   shipped
+app/assets/db/qamus.corpus.xz  10.9 MB   shipped
         │  xz -9e
         ▼
-   container  55.8 MB           lengths │ headwords │ definitions
+   container  58.9 MB           lengths │ headwords │ definitions │ forms │ links
         │  one pass on first launch
         ▼
-    qamus.db  ~37 MB            + normalised keys, reversed keys, 4 indexes,
+    qamus.db  ~59 MB            + normalised keys, reversed keys, 7 indexes,
                                   definitions in deflate blocks of 512
 ```
 
@@ -115,8 +145,10 @@ python3 tools/verify_db.py /path/to/AlmaanyArArV11.db app/assets/db/qamus.corpus
 
 ### Searching
 
-Arabic readers type without diacritics and rarely agree on hamza seats, so every
-query and every headword is folded through one normaliser
+Search runs over the lookup forms, not the headwords, so an inflected form
+finds its way home. On top of that, Arabic readers type without diacritics and
+rarely agree on hamza seats, so every query and every form is folded through
+one normaliser
 (`lib/src/data/arabic.dart`): marks and tatweel stripped, `أإآٱ→ا`, `ىئ→ي`,
 `ؤ→و`, `ة→ه`, standalone hamza dropped, everything non-letter discarded. `شَيْء`
 and `شي` land on the same key; so do `ذِئْب` and `ذيب`.
@@ -125,11 +157,16 @@ That single fold gives all five modes off two B-tree indexes:
 
 | Mode | Query |
 |---|---|
-| يبدأ بـ | `k >= key AND k < key+￿` |
-| ينتهي بـ | the same range scan over `kr`, the reversed key |
-| يحتوي على | `k LIKE '%key%'` |
-| مطابق تمامًا | `k = key` |
+| يبدأ بـ | `f >= key AND f < key+￿` |
+| ينتهي بـ | the same range scan over `fr`, the reversed form |
+| يحتوي على | `f LIKE '%key%'` |
+| مطابق تمامًا | `f = key` |
 | الجذر | join through `roots` |
+
+A hit is then described in a second, bounded query: the form's own headword
+supplies the vocalised spelling when it has one, so `مهاب` reads `مُهَابٌ`
+rather than `هَيْبَة` — one of the five headwords it also reaches. A form with
+no headword of its own keeps its bare spelling and names where it leads.
 
 Prefix search lands in well under a millisecond; suffix search in about two.
 The definition sweep ("بحث في المعاني") has no index to lean on — it inflates
@@ -156,7 +193,7 @@ asks for reduced motion, which also makes them testable.
 ```bash
 cd app
 flutter pub get
-flutter test                       # 40 tests, run against the real corpus
+flutter test                       # 46 tests, run against the real corpus
 flutter run -d windows             # or android, or ios
 ```
 

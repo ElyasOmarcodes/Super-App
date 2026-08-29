@@ -564,6 +564,17 @@ class _ResultCard extends StatelessWidget {
                 const SizedBox(height: 2),
                 Row(
                   children: [
+                    if (item.resolvesTo != null) ...[
+                      Text(
+                        strings.resolvesTo(item.resolvesTo!),
+                        textDirection: TextDirection.rtl,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: QamusTheme.violet,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                    ],
                     Text(
                       strings.senses(item.senseCount),
                       style: theme.textTheme.labelSmall,

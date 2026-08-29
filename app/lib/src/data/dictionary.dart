@@ -77,8 +77,11 @@ class Dictionary {
 
   /// Live suggestions and full result lists share this one path.
   ///
-  /// Results are collapsed by normalised key so that the eleven vocalisations
-  /// of كتب arrive as a single headword rather than eleven near-duplicates.
+  /// Searching runs over the **lookup forms**, not the headwords: two thirds
+  /// of the forms the source knows — plurals, conjugations, definite forms —
+  /// are not headwords themselves, so a headword-only search cannot find
+  /// them. `مهابل` resolves to the entry for `مهبل`; `الرحيم` and `رحيم`
+  /// resolve to each other, which is what makes the article transparent.
   List<Headword> search(
     String query, {
     required SearchMode mode,
@@ -87,68 +90,108 @@ class Dictionary {
   }) {
     final key = normalize(query);
     if (key.isEmpty) return const [];
-    final filter = _bookFilter(books);
 
     final (String where, List<Object?> args) = switch (mode) {
-      SearchMode.starts => ('k >= ? AND k < ?', [key, rangeEnd(key)]),
+      SearchMode.starts => ('f >= ? AND f < ?', [key, rangeEnd(key)]),
       SearchMode.ends => () {
         final r = reverseKey(key);
-        return ('kr >= ? AND kr < ?', <Object?>[r, rangeEnd(r)]);
+        return ('fr >= ? AND fr < ?', <Object?>[r, rangeEnd(r)]);
       }(),
-      SearchMode.contains => ('k LIKE ?', <Object?>['%$key%']),
-      SearchMode.exact => ('k = ?', <Object?>[key]),
+      SearchMode.contains => ('f LIKE ?', <Object?>['%$key%']),
+      SearchMode.exact => ('f = ?', <Object?>[key]),
       SearchMode.root => (
-        'rid IN (SELECT id FROM roots WHERE r = ?)',
+        'f IN (SELECT DISTINCT k FROM entries WHERE rid IN '
+            '(SELECT id FROM roots WHERE r = ?))',
         <Object?>[key],
       ),
     };
 
-    // `MAX(LENGTH(w))` makes SQLite pick the bare `w` from the longest — i.e.
-    // the most fully vocalised — spelling in each group.
-    final sql =
-        '''
-      SELECT k,
-             w,
-             MAX(LENGTH(w))          AS _pick,
-             COUNT(*)                AS n,
-             GROUP_CONCAT(DISTINCT b) AS bs
-      FROM entries
-      WHERE $where$filter
-      GROUP BY k
-      ORDER BY (k = ?) DESC, LENGTH(k), k
-      LIMIT ?
-    ''';
+    // Two steps rather than one join: pick the forms off their index first,
+    // then describe only those. Aggregating over every entry a broad prefix
+    // touches before applying the limit would be far more work.
+    final forms = _db.select(
+      'SELECT id, f FROM forms WHERE $where '
+      'ORDER BY (f = ?) DESC, LENGTH(f), f LIMIT ?',
+      [...args, key, limit],
+    );
+    if (forms.isEmpty) return const [];
 
-    return _db
-        .select(sql, [...args, key, limit])
-        .map(_toHeadword)
-        .toList(growable: false);
+    return _describe([
+      for (final row in forms) (row['id'] as int, row['f'] as String),
+    ], books);
   }
 
-  Headword _toHeadword(Row r) => Headword(
-    key: r['k'] as String,
-    word: r['w'] as String,
-    senseCount: r['n'] as int,
-    bookIds: (r['bs'] as String)
-        .split(',')
-        .map(int.parse)
-        .toList(growable: false),
-  );
+  /// Fills in the vocalised spelling, sense count and books for each form.
+  ///
+  /// A form's own headword supplies the spelling when it has one, so a search
+  /// for `مهاب` reads `مُهَابٌ` rather than `هَيْبَة` — one of the five
+  /// headwords that form also reaches. A form with no headword of its own,
+  /// like the plural `مهابل`, keeps its bare spelling and names where it
+  /// leads instead.
+  List<Headword> _describe(List<(int, String)> forms, Set<int> books) {
+    if (forms.isEmpty) return const [];
+    final ids = [for (final form in forms) form.$1].join(',');
+    final filter = _bookFilter(books).replaceAll(' AND b IN', ' AND e.b IN');
+
+    // `MAX(LENGTH(e.w))` makes SQLite pick the bare `e.w` from the longest —
+    // that is, the most fully vocalised — spelling in each group.
+    final totals = {
+      for (final row in _db.select('''
+        SELECT l.fid AS fid, e.w AS w, MAX(LENGTH(e.w)) AS _pick,
+               COUNT(*) AS n, GROUP_CONCAT(DISTINCT e.b) AS bs
+        FROM links l
+        JOIN entries e ON e.k = l.hk
+        WHERE l.fid IN ($ids)$filter
+        GROUP BY l.fid
+      '''))
+        row['fid'] as int: row,
+    };
+
+    final own = {
+      for (final row in _db.select('''
+        SELECT l.fid AS fid, e.w AS w, MAX(LENGTH(e.w)) AS _pick
+        FROM links l
+        JOIN forms f ON f.id = l.fid
+        JOIN entries e ON e.k = l.hk
+        WHERE l.fid IN ($ids) AND e.k = f.f$filter
+        GROUP BY l.fid
+      '''))
+        row['fid'] as int: row['w'] as String,
+    };
+
+    final out = <Headword>[];
+    for (final (id, form) in forms) {
+      final row = totals[id];
+      if (row == null) continue; // every entry filtered out by the book filter
+      final headword = own[id];
+      final reached = row['w'] as String;
+      out.add(
+        Headword(
+          key: form,
+          word: headword ?? form,
+          resolvesTo: headword == null ? reached : null,
+          senseCount: row['n'] as int,
+          bookIds: (row['bs'] as String).split(',').map(int.parse).toList(),
+        ),
+      );
+    }
+    return out;
+  }
 
   /// Headwords sharing [rootId], used for the derivations list on an entry.
   List<Headword> byRootId(int rootId, {String? excludeKey, int limit = 80}) {
     final rows = _db.select(
       '''
-      SELECT k, w, MAX(LENGTH(w)) AS _pick, COUNT(*) AS n, GROUP_CONCAT(DISTINCT b) AS bs
-      FROM entries
-      WHERE rid = ? AND k <> ?
-      GROUP BY k
-      ORDER BY LENGTH(k), k
+      SELECT id, f FROM forms
+      WHERE f IN (SELECT DISTINCT k FROM entries WHERE rid = ?) AND f <> ?
+      ORDER BY LENGTH(f), f
       LIMIT ?
     ''',
       [rootId, excludeKey ?? '', limit],
     );
-    return rows.map(_toHeadword).toList(growable: false);
+    return _describe([
+      for (final row in rows) (row['id'] as int, row['f'] as String),
+    ], const {});
   }
 
   /// Spelling neighbours plus rhymes — the "كلمات مشابهة" strip.
@@ -158,16 +201,16 @@ class Dictionary {
     final rhyme = reverseKey(key.substring(key.length - 2));
     final rows = _db.select(
       '''
-      SELECT k, w, MAX(LENGTH(w)) AS _pick, COUNT(*) AS n, GROUP_CONCAT(DISTINCT b) AS bs
-      FROM entries
-      WHERE ((k >= ? AND k < ?) OR (kr >= ? AND kr < ?)) AND k <> ?
-      GROUP BY k
-      ORDER BY ABS(LENGTH(k) - ?), LENGTH(k), k
+      SELECT id, f FROM forms
+      WHERE ((f >= ? AND f < ?) OR (fr >= ? AND fr < ?)) AND f <> ?
+      ORDER BY ABS(LENGTH(f) - ?), LENGTH(f), f
       LIMIT ?
     ''',
       [stem, rangeEnd(stem), rhyme, rangeEnd(rhyme), key, key.length, limit],
     );
-    return rows.map(_toHeadword).toList(growable: false);
+    return _describe([
+      for (final row in rows) (row['id'] as int, row['f'] as String),
+    ], const {});
   }
 
   /// Roots that start with [query] — powers the root browser.
@@ -189,32 +232,52 @@ class Dictionary {
 
   // ------------------------------------------------------------------- entry
 
-  /// Everything the entry page shows for one headword.
+  /// Everything the entry page shows for one lookup form.
+  ///
+  /// A form can explain more than one headword — `مهاب` reaches أهاب، مهاب،
+  /// مهب، هاب and هيبة — so the page gathers the senses of all of them, with
+  /// the form's own headword first when it is one.
   EntryDetail? entry(String key, {Set<int> books = const {}}) {
-    final filter = _bookFilter(books);
+    final filter = _bookFilter(books).replaceAll(' AND b IN', ' AND e.b IN');
     final rows = _db.select(
       '''
-      SELECT e.id, e.w, e.b, e.rid, r.r AS root
-      FROM entries e
+      SELECT e.id, e.w, e.b, e.rid, e.k, r.r AS root
+      FROM forms f
+      JOIN links l ON l.fid = f.id
+      JOIN entries e ON e.k = l.hk
       LEFT JOIN roots r ON r.id = e.rid
-      WHERE e.k = ?$filter
-      ORDER BY e.b, e.id
+      WHERE f.f = ?$filter
+      ORDER BY (e.k = ?) DESC, e.b, e.id
     ''',
-      [key],
+      [key, key],
     );
     if (rows.isEmpty) return null;
 
     final senses = <Sense>[];
+    final headKeys = <String>{};
     String? root;
     int? rootId;
     var display = rows.first['w'] as String;
+    var displayFromForm = (rows.first['k'] as String) == key;
 
     for (final row in rows) {
       final id = row['id'] as int;
       final word = row['w'] as String;
-      if (word.length > display.length) display = word;
-      root ??= row['root'] as String?;
-      rootId ??= row['rid'] as int?;
+      final headKey = row['k'] as String;
+      headKeys.add(headKey);
+
+      // Prefer the most vocalised spelling of the form's own headword; fall
+      // back to the most vocalised spelling of anything it reaches.
+      final fromForm = headKey == key;
+      if ((fromForm && !displayFromForm) ||
+          (fromForm == displayFromForm && word.length > display.length)) {
+        display = word;
+        displayFromForm = fromForm;
+      }
+      if (fromForm || root == null) {
+        root ??= row['root'] as String?;
+        rootId ??= row['rid'] as int?;
+      }
       senses.add(
         Sense(
           id: id,
@@ -232,6 +295,7 @@ class Dictionary {
       root: root,
       rootId: rootId,
       senses: senses,
+      alsoExplains: headKeys.length > 1 ? headKeys.toList() : const [],
       sameRoot: rootId == null ? const [] : byRootId(rootId, excludeKey: key),
       similar: similarTo(key),
     );

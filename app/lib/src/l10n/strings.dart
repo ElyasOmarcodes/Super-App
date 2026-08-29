@@ -215,6 +215,19 @@ class Strings {
     'از همین ریشه',
     'From the same root',
   );
+
+  /// Shown under a plural or conjugation whose definition lives elsewhere.
+  String resolvesTo(String head) =>
+      _pick('انظر $head', '$head وګورئ', 'نگاه کنید به $head', 'see $head');
+
+  /// A lookup form can explain several headwords at once — مهاب reaches five.
+  String explainsCount(int count) => _pick(
+    'يشرح ${n(count)} مداخل',
+    '${n(count)} سرلیکونه شرحوي',
+    '${n(count)} سرمدخل را شرح می‌دهد',
+    'explains ${n(count)} headwords',
+  );
+
   String get similarWords =>
       _pick('كلمات مشابهة', 'ورته کلمې', 'واژه‌های مشابه', 'Similar words');
   String get copyEntry =>

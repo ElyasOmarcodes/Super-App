@@ -191,6 +191,112 @@ void main() {
     }
   });
 
+  group('the lookup form index', () {
+    test('finds inflected forms that are not headwords themselves', () {
+      // مهابل is a plural; the corpus has no such headword, only مهبل. The
+      // source's Keys table records the link, and without it this search
+      // returns nothing at all.
+      final hits = dictionary.search(
+        'مهابل',
+        mode: SearchMode.exact,
+        books: allBooks,
+      );
+      expect(hits, isNotEmpty, reason: 'مهابل must resolve to مهبل');
+
+      final entry = dictionary.entry('مهابل');
+      expect(entry, isNotNull);
+      expect(entry!.senses, isNotEmpty);
+    });
+
+    test('the prefix مهاب offers every form the source knows', () {
+      final hits = dictionary.search(
+        'مهاب',
+        mode: SearchMode.starts,
+        books: allBooks,
+        limit: 60,
+      );
+      final keys = hits.map((h) => h.key).toSet();
+      for (final form in [
+        'مهاب',
+        'مهابه',
+        'مهابط',
+        'مهابل',
+        'مهابيب',
+        'مهابيج',
+        'مهابيل',
+      ]) {
+        expect(keys, contains(form), reason: form);
+      }
+    });
+
+    test('one form gathers the senses of every headword it explains', () {
+      final entry = dictionary.entry('مهاب');
+      expect(entry, isNotNull);
+      // مهاب reaches أهاب، مهاب، مهب، هاب and هيبة, so its page carries far
+      // more than the three senses of the headword مهاب alone.
+      expect(entry!.alsoExplains.length, greaterThan(1));
+      expect(entry.senses.length, greaterThan(10));
+      expect(
+        entry.senses.map((s) => s.bookId).toSet().length,
+        greaterThan(2),
+        reason: 'senses should span several lexicons',
+      );
+    });
+
+    test('the definite article is transparent both ways', () {
+      final withArticle = dictionary.entry('الرحيم');
+      final without = dictionary.entry('رحيم');
+      expect(withArticle, isNotNull);
+      expect(without, isNotNull);
+
+      // Searching either spelling reaches both headwords, and the results
+      // still show the الـ form rather than silently dropping it.
+      expect(withArticle!.alsoExplains, contains('الرحيم'));
+      expect(withArticle.alsoExplains, contains('رحيم'));
+      expect(without!.alsoExplains, contains('الرحيم'));
+
+      final hits = dictionary.search(
+        'الرحيم',
+        mode: SearchMode.exact,
+        books: allBooks,
+      );
+      expect(hits, isNotEmpty);
+      expect(hits.first.key, 'الرحيم');
+    });
+
+    test('a result shows its own headword, not one it merely reaches', () {
+      final hits = dictionary.search(
+        'مهاب',
+        mode: SearchMode.exact,
+        books: allBooks,
+      );
+      expect(hits, isNotEmpty);
+      final head = hits.first;
+      // مهاب reaches هيبة among others; the row must still read مهاب.
+      expect(normalize(head.word), 'مهاب');
+      expect(head.resolvesTo, isNull);
+
+      final plural = dictionary
+          .search('مهابل', mode: SearchMode.exact, books: allBooks)
+          .first;
+      // مهابل has no headword of its own, so it keeps its bare spelling and
+      // names the singular that carries the definition.
+      expect(plural.key, 'مهابل');
+      expect(plural.resolvesTo, isNotNull);
+      expect(normalize(plural.resolvesTo!), 'مهبل');
+    });
+
+    test('every headword remains reachable as a form', () {
+      for (final word in ['كتب', 'مهاب', 'غريب', 'سلسبيل', 'شعفه']) {
+        expect(
+          dictionary.search(word, mode: SearchMode.exact, books: allBooks),
+          isNotEmpty,
+          reason: word,
+        );
+      }
+    });
+  });
+
   test('an empty or non-Arabic query never returns results', () {
     for (final mode in SearchMode.values) {
       expect(dictionary.search('', mode: mode, books: allBooks), isEmpty);

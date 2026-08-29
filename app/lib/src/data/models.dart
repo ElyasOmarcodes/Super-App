@@ -28,6 +28,7 @@ class Headword {
     required this.word,
     required this.senseCount,
     required this.bookIds,
+    this.resolvesTo,
     this.root,
   });
 
@@ -36,6 +37,10 @@ class Headword {
 
   /// Best (most fully vocalised) spelling to show.
   final String word;
+
+  /// When this form is not a headword of its own — `مهابل` is a plural whose
+  /// singular `مهبل` carries the definition — the headword it leads to.
+  final String? resolvesTo;
   final int senseCount;
   final List<int> bookIds;
   final String? root;
@@ -70,6 +75,7 @@ class EntryDetail {
     required this.senses,
     required this.sameRoot,
     required this.similar,
+    this.alsoExplains = const [],
     this.root,
     this.rootId,
   });
@@ -79,6 +85,10 @@ class EntryDetail {
   final String? root;
   final int? rootId;
   final List<Sense> senses;
+
+  /// The headword keys this form resolves to, when it reaches more than one.
+  /// `مهاب` reaches أهاب، مهاب، مهب، هاب and هيبة.
+  final List<String> alsoExplains;
 
   /// Other headwords derived from the same triliteral root.
   final List<Headword> sameRoot;

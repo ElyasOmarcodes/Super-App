@@ -250,7 +250,8 @@ class _Banner extends StatelessWidget {
                   Flexible(
                     child: Text(
                       '${strings.senses(detail.senses.length)} · '
-                      '${strings.books(detail.senses.map((s) => s.bookId).toSet().length)}',
+                      '${strings.books(detail.senses.map((s) => s.bookId).toSet().length)}'
+                      '${detail.alsoExplains.length > 1 ? ' · ${strings.explainsCount(detail.alsoExplains.length)}' : ''}',
                       style: theme.textTheme.labelSmall,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

@@ -10,9 +10,9 @@ import 'arabic.dart';
 const int kChunkSize = 512;
 
 /// Bumped when the container format or the database layout changes.
-const int kCorpusVersion = 2;
+const int kCorpusVersion = 3;
 
-const List<int> _magic = [0x51, 0x41, 0x4D, 0x55, 0x53, 0x31, 0x00]; // QAMUS1\0
+const List<int> _magic = [0x51, 0x41, 0x4D, 0x55, 0x53, 0x33, 0x00]; // QAMUS3\0
 
 /// Reads the columnar corpus container produced by `tools/build_db.py`.
 ///
@@ -91,6 +91,7 @@ void buildDatabase(
   final count = head.u32();
   final bookCount = head.u32();
   final rootCount = head.u32();
+  final formCount = head.u32();
 
   final books = <(String, String)>[
     for (var i = 0; i < bookCount; i++) (head.text(), head.text()),
@@ -105,6 +106,10 @@ void buildDatabase(
   final bookIds = head.section();
   final wordsBlob = head.section();
   final defsBlob = head.section();
+  final formLens = _Reader(head.section());
+  final formsBlob = head.section();
+  final linkCounts = _Reader(head.section());
+  final linkIds = _Reader(head.section());
 
   final file = File(path);
   if (file.existsSync()) file.deleteSync();
@@ -132,6 +137,12 @@ void buildDatabase(
                            rid INTEGER, b INTEGER NOT NULL,
                            k TEXT NOT NULL, kr TEXT NOT NULL);
       CREATE TABLE chunks (id INTEGER PRIMARY KEY, z BLOB NOT NULL);
+      -- The source's morphological lookup index: a surface form (a plural, a
+      -- conjugation, a definite form) mapped to the headwords that explain
+      -- it. Two thirds of these forms are not headwords themselves.
+      CREATE TABLE forms (id INTEGER PRIMARY KEY, f TEXT NOT NULL,
+                          fr TEXT NOT NULL);
+      CREATE TABLE links (fid INTEGER NOT NULL, hk TEXT NOT NULL);
     ''');
 
     db.execute('BEGIN');
@@ -168,6 +179,11 @@ void buildDatabase(
       pendingCount = 0;
     }
 
+    // Filled as entries are written, then read back by the form index. The
+    // builder ships an entry id per link rather than a headword string, so a
+    // drift between the two normalisers cannot produce a broken link.
+    final entryKeys = List<String>.filled(count, '');
+
     var wordAt = 0;
     var defAt = 0;
     for (var i = 0; i < count; i++) {
@@ -181,6 +197,7 @@ void buildDatabase(
       wordAt += wordLen;
 
       final key = normalize(word);
+      entryKeys[i] = key;
       insertEntry.execute([
         i,
         word,
@@ -203,6 +220,17 @@ void buildDatabase(
     insertEntry.dispose();
     insertChunk.dispose();
 
+    _writeForms(
+      db: db,
+      formCount: formCount,
+      formLens: formLens,
+      formsBlob: formsBlob,
+      linkCounts: linkCounts,
+      linkIds: linkIds,
+      entryKeys: entryKeys,
+      report: report,
+    );
+
     db.execute(
       'UPDATE books SET n = (SELECT COUNT(*) FROM entries WHERE entries.b = books.id)',
     );
@@ -220,6 +248,9 @@ void buildDatabase(
 
     report(0, BuildStage.indexing);
     db.execute('CREATE INDEX i_entries_k ON entries(k)');
+    db.execute('CREATE INDEX i_forms_f ON forms(f)');
+    db.execute('CREATE INDEX i_forms_fr ON forms(fr)');
+    db.execute('CREATE INDEX i_links_fid ON links(fid)');
     report(0.35, BuildStage.indexing);
     db.execute('CREATE INDEX i_entries_kr ON entries(kr)');
     report(0.7, BuildStage.indexing);
@@ -231,4 +262,67 @@ void buildDatabase(
   } finally {
     db.dispose();
   }
+}
+
+/// Writes the lookup forms and their links to the headwords they explain.
+///
+/// Each form is re-normalised on the way in, so everything the app queries is
+/// in *this* normaliser's shape whatever the builder used. Forms that collapse
+/// onto one another after that merge rather than duplicate.
+void _writeForms({
+  required Database db,
+  required int formCount,
+  required _Reader formLens,
+  required Uint8List formsBlob,
+  required _Reader linkCounts,
+  required _Reader linkIds,
+  required List<String> entryKeys,
+  required void Function(double, BuildStage) report,
+}) {
+  final insertForm = db.prepare('INSERT INTO forms(id,f,fr) VALUES (?,?,?)');
+  final insertLink = db.prepare('INSERT INTO links(fid,hk) VALUES (?,?)');
+
+  final formIds = <String, int>{};
+  final written = <int, Set<String>>{};
+  var formAt = 0;
+  var nextId = 0;
+
+  for (var i = 0; i < formCount; i++) {
+    final length = formLens.varint();
+    final raw = utf8.decode(
+      Uint8List.sublistView(formsBlob, formAt, formAt + length),
+    );
+    formAt += length;
+
+    final linkCount = linkCounts.varint();
+    final targets = <String>[];
+    var entryId = 0;
+    for (var j = 0; j < linkCount; j++) {
+      entryId += linkIds.varint(); // delta-coded within each form
+      if (entryId >= 0 && entryId < entryKeys.length) {
+        final key = entryKeys[entryId];
+        if (key.isNotEmpty) targets.add(key);
+      }
+    }
+
+    final form = normalize(raw);
+    if (form.isEmpty || targets.isEmpty) continue;
+
+    final id = formIds.putIfAbsent(form, () {
+      final assigned = nextId++;
+      insertForm.execute([assigned, form, reverseKey(form)]);
+      written[assigned] = <String>{};
+      return assigned;
+    });
+
+    final seen = written[id]!;
+    for (final key in targets) {
+      if (seen.add(key)) insertLink.execute([id, key]);
+    }
+
+    if (i % 8192 == 0) report(i / formCount, BuildStage.writing);
+  }
+
+  insertForm.dispose();
+  insertLink.dispose();
 }
