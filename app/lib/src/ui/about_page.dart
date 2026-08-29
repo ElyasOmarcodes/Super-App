@@ -4,7 +4,7 @@ import '../app.dart';
 import '../theme.dart';
 import 'widgets/motion.dart';
 
-enum AboutSection { program, developer, how, licences }
+enum AboutSection { program, how, licences }
 
 /// One page for the four "about" topics, scrolled to the one that was tapped.
 class AboutPage extends StatelessWidget {
@@ -21,7 +21,6 @@ class AboutPage extends StatelessWidget {
 
     final title = switch (section) {
       AboutSection.program => strings.aboutProgram,
-      AboutSection.developer => strings.aboutDeveloper,
       AboutSection.how => strings.howItWorks,
       AboutSection.licences => strings.licenses,
     };
@@ -31,14 +30,12 @@ class AboutPage extends StatelessWidget {
         strings.n(scope.dictionary.entryCount),
         strings.n(scope.dictionary.books.length),
       ),
-      AboutSection.developer => strings.aboutDeveloperBody,
       AboutSection.how => strings.howItWorksBody,
       AboutSection.licences => '',
     };
 
     final (icon, tint) = switch (section) {
       AboutSection.program => (Icons.info_rounded, QamusTheme.blue),
-      AboutSection.developer => (Icons.person_rounded, QamusTheme.rose),
       AboutSection.how => (Icons.lightbulb_rounded, scheme.tertiary),
       AboutSection.licences => (
         Icons.workspace_premium_rounded,

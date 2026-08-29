@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app.dart';
 import 'favourites_page.dart';
@@ -33,18 +34,37 @@ class _AppShellState extends State<AppShell> {
       key: _scaffold,
       extendBody: true,
       drawer: const AppDrawer(),
-      body: IndexedStack(
-        index: _index,
+      body: Stack(
         children: [
-          HomePage(onOpenMenu: () => _scaffold.currentState?.openDrawer()),
-          const FavouritesPage(),
-          const RecentPage(),
-          const SettingsPage(),
+          IndexedStack(
+            index: _index,
+            children: [
+              HomePage(onOpenMenu: () => _scaffold.currentState?.openDrawer()),
+              const FavouritesPage(),
+              const RecentPage(),
+              const SettingsPage(),
+            ],
+          ),
+          // The curtain: opaque at the floor, clear at its top edge, exactly
+          // as tall as the bar that floats on it. Content scrolling behind
+          // the navigation dissolves into the background instead of running
+          // into it.
+          const PositionedDirectional(
+            start: 0,
+            end: 0,
+            bottom: 0,
+            child: IgnorePointer(child: NavigationScrim()),
+          ),
         ],
       ),
       bottomNavigationBar: SoftNavigationBar(
         index: _index,
-        onChanged: (i) => setState(() => _index = i),
+        onChanged: (i) {
+          if (i == _index) return;
+          // The small tick a native app gives when a tab actually changes.
+          HapticFeedback.selectionClick();
+          setState(() => _index = i);
+        },
         items: [
           (
             icon: Icons.auto_stories_outlined,
@@ -73,6 +93,42 @@ class _AppShellState extends State<AppShell> {
 }
 
 typedef NavItem = ({IconData icon, IconData activeIcon, String label});
+
+/// How tall [SoftNavigationBar] stands, including the gap it keeps from the
+/// bottom of the screen and whatever the system reserves below it.
+double navigationBarHeight(BuildContext context) =>
+    66 + 12 + MediaQuery.paddingOf(context).bottom;
+
+/// The gradient curtain the navigation bar sits on.
+///
+/// Its own height matches the bar exactly, and it fades from the page's
+/// background colour at the floor to nothing at its top edge, so a list
+/// scrolling underneath the bar disappears rather than colliding with it.
+class NavigationScrim extends StatelessWidget {
+  const NavigationScrim({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    return SizedBox(
+      height: navigationBarHeight(context),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.bottomCenter,
+            end: Alignment.topCenter,
+            colors: [
+              surface,
+              surface.withValues(alpha: 0.92),
+              surface.withValues(alpha: 0),
+            ],
+            stops: const [0, 0.45, 1],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 /// A floating, translucent navigation bar.
 ///
@@ -185,43 +241,49 @@ class _NavSlot extends StatelessWidget {
         ? scheme.onPrimaryContainer
         : scheme.onSurfaceVariant;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 260),
-            transitionBuilder: (child, animation) => ScaleTransition(
-              scale: Tween<double>(begin: 0.7, end: 1).animate(
-                CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+    return Tooltip(
+      message: item.label,
+      preferBelow: false,
+      // A long press names the tab, the way a desktop app names a toolbar
+      // button — worth having when the label is one small word.
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 260),
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: Tween<double>(begin: 0.7, end: 1).animate(
+                  CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+                ),
+                child: FadeTransition(opacity: animation, child: child),
               ),
-              child: FadeTransition(opacity: animation, child: child),
+              child: Icon(
+                selected ? item.activeIcon : item.icon,
+                key: ValueKey(selected),
+                size: selected ? 24 : 22,
+                color: colour,
+              ),
             ),
-            child: Icon(
-              selected ? item.activeIcon : item.icon,
-              key: ValueKey(selected),
-              size: selected ? 24 : 22,
-              color: colour,
+            const SizedBox(height: 3),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 260),
+              style: theme.textTheme.labelSmall!.copyWith(
+                color: colour,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                fontSize: selected ? 11.5 : 11,
+              ),
+              child: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
             ),
-          ),
-          const SizedBox(height: 3),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 260),
-            style: theme.textTheme.labelSmall!.copyWith(
-              color: colour,
-              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              fontSize: selected ? 11.5 : 11,
-            ),
-            child: Text(
-              item.label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -497,6 +497,379 @@ class Strings {
     'This happens only once',
   );
 
+  // ----------------------------------------------------------- the author
+  String get developerRole => _pick(
+    'مطوّر تطبيقات لأندرويد و iOS وويندوز',
+    'د اندروید، iOS او وینډوز لپاره د اپلیکیشنونو ډولوپر',
+    'توسعه‌دهندهٔ برنامه برای اندروید، iOS و ویندوز',
+    'App developer for Android, iOS and Windows',
+  );
+
+  String get developerTeacher =>
+      _pick('وأستاذ', 'او استاد', 'و استاد', 'and a teacher');
+
+  String get developerBio => _pick(
+    'إلى جانب كتابة البرامج، يُدرّس ما يعرفه. وهذا المعجم ثمرة الأمرين معًا: '
+        'صُنع ليكون سريعًا في يد القارئ، وواضحًا في يد المتعلّم — يفتح بلا '
+        'انتظار، ويعمل بلا إنترنت، ويشرح نفسه لمن لم يمسك هاتفًا ذكيًّا من قبل.',
+    'د پروګرام له لیکلو سره سره، هغه څه چې پوهیږي نورو ته هم ورزده کوي. دا '
+        'قاموس د همدې دواړو مېوه ده: داسې جوړ شوی چې د لوستونکي په لاس کې '
+        'ګړندی وي او د زده‌کوونکي په لاس کې څرګند — بې انتظاره پرانیځي، بې '
+        'انټرنټه کار کوي، او هغه چا ته هم ځان تشریح کوي چې تر اوسه یې سمارټ '
+        'ټیلیفون نه دی نیولی.',
+    'در کنار نوشتن برنامه، آنچه می‌داند آموزش می‌دهد. این فرهنگ میوهٔ همین دو '
+        'است: چنان ساخته شده که در دست خواننده تند باشد و در دست آموزنده روشن '
+        '— بی‌درنگ باز می‌شود، بی‌اینترنت کار می‌کند، و خود را برای کسی که تا '
+        'کنون گوشی هوشمند به دست نگرفته نیز شرح می‌دهد.',
+    'Alongside writing software, he teaches what he knows. This dictionary is '
+        'the fruit of both: built to be quick in a reader\'s hand and clear in '
+        'a learner\'s — it opens without waiting, works without a network, and '
+        'explains itself to someone who has never held a smartphone before.',
+  );
+
+  String get contactTitle => _pick('للتواصل', 'اړیکه', 'تماس', 'Get in touch');
+  String get contactDetail => _pick(
+    'اضغط لفتح التطبيق، أو المسه مطوّلًا لنسخ العنوان',
+    'د پرانیستلو لپاره کېکاږئ، د کاپي کولو لپاره یې اوږد ونیسئ',
+    'برای باز کردن بفشارید، برای رونوشت نگه دارید',
+    'Tap to open, press and hold to copy',
+  );
+
+  String get whatsappLabel => _pick('واتساب', 'واټساپ', 'واتساپ', 'WhatsApp');
+  String get telegramLabel => _pick('تيليغرام', 'ټلګرام', 'تلگرام', 'Telegram');
+  String get emailLabel =>
+      _pick('البريد الإلكتروني', 'بریښنالیک', 'رایانامه', 'Email');
+
+  String get platformsTitle =>
+      _pick('يبني لـ', 'جوړوي یې لپاره', 'می‌سازد برای', 'Builds for');
+  String get teachesTitle =>
+      _pick('ويُدرّس', 'او ښوونه کوي', 'و می‌آموزد', 'And teaches');
+
+  String get copyLabel => _pick('نسخ', 'کاپي', 'رونوشت', 'Copy');
+  String get copiedToClipboard => _pick(
+    'نُسخ إلى الحافظة',
+    'کاپي شو',
+    'رونوشت شد',
+    'Copied to the clipboard',
+  );
+  String get couldNotOpen => _pick(
+    'تعذّر فتح التطبيق — نُسخ العنوان بدلًا من ذلك',
+    'اپلیکیشن پرانیستل ونه شو — پرځای یې پته کاپي شوه',
+    'برنامه باز نشد — به‌جایش نشانی رونوشت شد',
+    'Could not open the app — the address was copied instead',
+  );
+
+  // ---------------------------------------------------------------- entry
+  String get copySense => _pick(
+    'نسخ هذا الشرح',
+    'دا شرح کاپي کړئ',
+    'رونوشت این شرح',
+    'Copy this definition',
+  );
+  String get senseCopied => _pick(
+    'نُسخ الشرح مع اسم معجمه',
+    'شرح د خپل معجم له نامه سره کاپي شو',
+    'شرح همراه نام فرهنگش رونوشت شد',
+    'Definition copied, with its lexicon',
+  );
+
+  // --------------------------------------------------------------- shell
+  String get menuLabel => _pick('القائمة', 'مینو', 'فهرست', 'Menu');
+  String get searchModeLabel =>
+      _pick('نمط البحث', 'د لټون ډول', 'شیوهٔ جستجو', 'Search mode');
+
+  // ---------------------------------------------------------------- guide
+  String get guide => _pick(
+    'دليل الاستخدام',
+    'د کارونې لارښود',
+    'راهنمای کاربرد',
+    'How to use it',
+  );
+  String get guideDetail => _pick(
+    'شرح كل زرّ بلغة بسيطة، مع صورته',
+    'د هر تڼۍ ساده تشریح، د خپلې بڼې سره',
+    'شرح هر دکمه به زبان ساده، همراه شکلش',
+    'Every button explained in plain words, with its picture',
+  );
+  String get guideIntro => _pick(
+    'لا يلزمك أن تعرف شيئًا عن الحواسيب لتستعمل هذا المعجم. '
+        'في كل بابٍ هنا ترى الزرّ كما هو في التطبيق تمامًا، وتحته ما يفعله، '
+        'ومثالٌ تجرّبه بنفسك.',
+    'د دې قاموس کارولو لپاره پر کمپیوټر پوهېدل اړین نه دي. دلته په هر باب کې '
+        'تڼۍ هماغسې ګورئ لکه په اپلیکیشن کې چې ده، لاندې یې دا چې څه کوي، '
+        'او یو مثال چې پخپله یې وازمویئ.',
+    'برای به‌کار بردن این فرهنگ لازم نیست چیزی از رایانه بدانید. در هر بخش '
+        'اینجا دکمه را همان‌گونه که در برنامه است می‌بینید، زیر آن کاری که '
+        'می‌کند، و نمونه‌ای که خودتان بیازمایید.',
+    'You need to know nothing about computers to use this dictionary. In every '
+        'section here you see the button exactly as it appears in the app, what '
+        'it does underneath, and an example to try yourself.',
+  );
+  String get guideExampleLabel =>
+      _pick('جرّب', 'وازمویئ یې', 'بیازمایید', 'Try it');
+  String get guideOpenIt => _pick(
+    'افتحه الآن',
+    'اوس یې پرانیځئ',
+    'همین حالا باز کنید',
+    'Open it now',
+  );
+
+  String get guideChapterEntry =>
+      _pick('صفحة الكلمة', 'د کلمې پاڼه', 'صفحهٔ واژه', 'A word\'s page');
+  String get guideChapterOffline =>
+      _pick('بلا إنترنت', 'بې انټرنټه', 'بدون اینترنت', 'With no internet');
+
+  String get guideChapterSearch =>
+      _pick('صندوق البحث', 'د لټون بکس', 'جعبهٔ جستجو', 'The search box');
+  String get guideSearchBody => _pick(
+    'اكتب الكلمة هنا بأصابعك، حرفًا حرفًا. ومع كل حرف تكتبه يبدأ المعجم '
+        'يعرض عليك ما وجده — لا تحتاج أن تضغط شيئًا بعدها. ولا يهمّك التشكيل: '
+        'اكتب «شي» تجد «شَيْء»، واكتب «ذيب» تجد «ذِئْب».',
+    'کلمه دلته په ګوتو ولیکئ، حرف په حرف. له هر حرف سره قاموس هغه څه درښیي '
+        'چې موندلي یې دي — وروسته څه کېکاږلو ته اړتیا نشته. تشکیل مو هم پروا '
+        'نه‌کوي: «شي» ولیکئ، «شَيْء» مومئ؛ «ذيب» ولیکئ، «ذِئْب» مومئ.',
+    'واژه را اینجا با انگشتان بنویسید، حرف به حرف. با هر حرف، فرهنگ آنچه یافته '
+        'نشانتان می‌دهد — پس از آن نیازی به فشردن چیزی نیست. اِعراب هم مهم '
+        'نیست: «شي» بنویسید، «شَيْء» می‌یابید؛ «ذيب» بنویسید، «ذِئْب».',
+    'Type the word here, letter by letter. With every letter the dictionary '
+        'shows you what it has found — you need press nothing afterwards. Nor do '
+        'the marks matter: type "شي" and you find "شَيْء"; type "ذيب" and you '
+        'find "ذِئْب".',
+  );
+
+  String get guideStartsBody => _pick(
+    'هذا هو المعتاد: تكتب أوّل الكلمة، فيأتيك كل ما يبدأ به. '
+        'كمن ينادي على باب الدار باسمٍ، فيخرج إليه كل من كان اسمه يبدأ بذلك.',
+    'دا هماغه معمول ډول دی: د کلمې پیل لیکئ، هر څه چې پرې پیلیږي راځي. '
+        'لکه څوک چې د کور په دروازه یو نوم غږ کړي، نو هر څوک چې نوم یې پرې '
+        'پیلیږي راووځي.',
+    'این همان شیوهٔ معمول است: آغاز واژه را می‌نویسید و هرچه با آن آغاز '
+        'می‌شود می‌آید. چون کسی که بر در خانه نامی صدا کند و هر که نامش با آن '
+        'آغاز شود بیرون آید.',
+    'This is the ordinary way: you type the start of a word and everything '
+        'beginning with it comes to you. Like calling a name at the door of a '
+        'house, and out comes everyone whose name begins that way.',
+  );
+  String get guideStartsExample => _pick(
+    'اكتب «رحم» — يأتيك رَحيم ورَحْمة ورَحِم ومَرْحَمة.',
+    '«رحم» ولیکئ — رَحيم، رَحْمة، رَحِم او مَرْحَمة راځي.',
+    '«رحم» بنویسید — رَحيم، رَحْمة، رَحِم و مَرْحَمة می‌آید.',
+    'Type "رحم" — you get رَحيم, رَحْمة, رَحِم and مَرْحَمة.',
+  );
+
+  String get guideEndsBody => _pick(
+    'هذا باب الشعراء. تكتب آخر الكلمة لا أوّلها، فيأتيك كل ما ينتهي بها — '
+        'وهكذا تُجمع القوافي في لحظة، وما كان يُجمع قديمًا في دفترٍ وعمر.',
+    'دا د شاعرانو دروازه ده. د کلمې پای لیکئ، نه پیل یې، نو هر څه چې پرې پای '
+        'ته رسیږي راځي — قافیې په یوه شېبه راټولیږي، هغه څه چې پخوا په یوه '
+        'کتابچه او یو عمر راټولېدې.',
+    'این درِ شاعران است. پایان واژه را می‌نویسید نه آغازش، و هرچه به آن ختم '
+        'می‌شود می‌آید — قافیه‌ها در یک لحظه گرد می‌آیند، همان که دیرزمانی در '
+        'دفتری و عمری گرد می‌آمد.',
+    'This is the poets\' door. You type the end of a word rather than its '
+        'start, and everything ending that way arrives — rhymes gathered in a '
+        'moment that once took a notebook and a lifetime.',
+  );
+  String get guideEndsExample => _pick(
+    'اكتب «يب» — يأتيك حَبيب وطَبيب وغَريب وقَريب.',
+    '«يب» ولیکئ — حَبيب، طَبيب، غَريب او قَريب راځي.',
+    '«يب» بنویسید — حَبيب، طَبيب، غَريب و قَريب می‌آید.',
+    'Type "يب" — you get حَبيب, طَبيب, غَريب and قَريب.',
+  );
+
+  String get guideContainsBody => _pick(
+    'حين لا تذكر إلا شيئًا من وسط الكلمة. يبحث عن حروفك أينما وقعت — '
+        'كمن يفتّش عن خرزةٍ في عقد، لا يدري في أوّله هي أم في آخره.',
+    'کله چې یوازې د کلمې منځ درپه‌یاد وي. ستاسو حروف هر چېرې چې وي لټوي — '
+        'لکه څوک چې په یوه غاړکۍ کې یوه دانه لټوي او نه پوهیږي په سر کې ده '
+        'که په پای کې.',
+    'آنگاه که تنها میانهٔ واژه در یادتان مانده. حروف شما را هرجا که باشد '
+        'می‌جوید — چون کسی که در گردنبندی مهره‌ای می‌جوید و نمی‌داند در آغاز '
+        'است یا در پایان.',
+    'For when you remember only something from the middle. It looks for your '
+        'letters wherever they fall — like hunting for one bead on a necklace, '
+        'not knowing whether it sits at the start or the end.',
+  );
+  String get guideContainsExample => _pick(
+    'اكتب «سلم» — يأتيك مُسْلِم وتَسْليم واسْتِسْلام.',
+    '«سلم» ولیکئ — مُسْلِم، تَسْليم او اسْتِسْلام راځي.',
+    '«سلم» بنویسید — مُسْلِم، تَسْليم و اسْتِسْلام می‌آید.',
+    'Type "سلم" — you get مُسْلِم, تَسْليم and اسْتِسْلام.',
+  );
+
+  String get guideExactBody => _pick(
+    'الكلمة نفسها لا غير. إذا كنت واثقًا ممّا تريد ولا تريد أن يزاحمها شيء، '
+        'فهذا بابك.',
+    'یوازې هماغه کلمه، بس. که پر خپل مطلب ډاډه یاست او نه غواړئ بل څه ورسره '
+        'ګډ شي، نو دا ستاسو دروازه ده.',
+    'خودِ همان واژه و بس. اگر به آنچه می‌خواهید مطمئن‌اید و نمی‌خواهید چیزی '
+        'با آن بیامیزد، این درِ شماست.',
+    'The word itself and nothing more. If you are sure what you want and want '
+        'nothing crowding it, this is your door.',
+  );
+  String get guideExactExample => _pick(
+    'اكتب «قلب» — يأتيك قَلْب وحده، لا انْقِلاب ولا تَقَلُّب.',
+    '«قلب» ولیکئ — یوازې قَلْب راځي، نه انْقِلاب او نه تَقَلُّب.',
+    '«قلب» بنویسید — تنها قَلْب می‌آید، نه انْقِلاب و نه تَقَلُّب.',
+    'Type "قلب" — you get قَلْب alone, not انْقِلاب nor تَقَلُّب.',
+  );
+
+  String get guideRootBody => _pick(
+    'كل كلمة عربية لها أصل من ثلاثة حروف، ومنه تتفرّع أسرة كاملة. '
+        'هذا الباب يجمع لك الأسرة كلّها من أصلها الواحد.',
+    'هره عربي کلمه یو درې‌حرفي اصل لري او له همدې څخه یوه بشپړه کورنۍ '
+        'راټوکیږي. دا دروازه ټوله کورنۍ له یوه اصله راټولوي.',
+    'هر واژهٔ عربی ریشه‌ای سه‌حرفی دارد و از آن خانواده‌ای کامل می‌روید. '
+        'این در، همهٔ خانواده را از یک ریشه گرد می‌آورد.',
+    'Every Arabic word has a three-letter root, and from it a whole family '
+        'grows. This door gathers the family from its one origin.',
+  );
+  String get guideRootExample => _pick(
+    'اكتب «كتب» — يأتيك كاتِب ومَكْتوب وكِتاب ومَكْتَبة ومُكاتَبة.',
+    '«کتب» ولیکئ — کاتِب، مَکْتوب، کِتاب، مَکْتَبة او مُکاتَبة راځي.',
+    '«کتب» بنویسید — کاتِب، مَکْتوب، کِتاب، مَکْتَبة و مُکاتَبة می‌آید.',
+    'Type "كتب" — you get كاتِب, مَكْتوب, كِتاب, مَكْتَبة and مُكاتَبة.',
+  );
+
+  String get guideBooksBody => _pick(
+    'هذا المعجم ستّة معاجم في واحد. بهذا الزرّ تقول له: خذني إلى معجم بعينه، '
+        'أو افتح لي الستّة جميعًا. وإذا غاب عنك شرحٌ تنتظره، فانظر هنا أوّلًا — '
+        'لعلّ معجمه مطفأ.',
+    'دا قاموس په یوه کې شپږ معاجم دي. په دې تڼۍ ورته وایاست: یوه معین معجم '
+        'ته مې بوځه، یا ټول شپږ راته خلاص کړه. که کوم شرح چې تمه یې لرئ ونه '
+        'ښکاره شي، لومړی دلته وګورئ — کېدای شي معجم یې مړ وي.',
+    'این فرهنگ، شش فرهنگ در یکی است. با این دکمه به او می‌گویید: مرا به '
+        'فرهنگی معیّن ببر، یا هر شش را برایم بگشا. اگر شرحی که چشم‌به‌راهش '
+        'بودید نیامد، نخست اینجا را ببینید — شاید فرهنگش خاموش باشد.',
+    'This dictionary is six lexicons in one. With this button you tell it: '
+        'take me to one particular lexicon, or open all six. And if a definition '
+        'you expected is missing, look here first — its lexicon may be switched '
+        'off.',
+  );
+
+  String get guideDeepBody => _pick(
+    'أحيانًا تعرف المعنى ولا تذكر الكلمة. هنا لا يبحث المعجم في المداخل، '
+        'بل يقرأ الشروح كلّها حرفًا حرفًا حتى يجد ما وصفته. '
+        'وهو أبطأ من إخوته لأنّه يقرأ كتابًا كاملًا لأجلك — فامنحه لحظة.',
+    'کله کله معنا پېژنئ خو کلمه مو نه یادیږي. دلته قاموس په مدخلونو کې نه '
+        'لټوي، بلکې ټولې شرحې حرف په حرف لولي ترڅو هغه ومومي چې تاسو یې '
+        'انځور کړی. له خپلو وروڼو ورو دی، ځکه ستاسو لپاره یو بشپړ کتاب لولي '
+        '— نو یوه شېبه ورکړئ.',
+    'گاه معنا را می‌دانید و واژه را به یاد نمی‌آورید. اینجا فرهنگ در مدخل‌ها '
+        'نمی‌گردد، بلکه همهٔ شرح‌ها را حرف به حرف می‌خواند تا آنچه وصف کرده‌اید '
+        'بیابد. از برادرانش کندتر است، زیرا برای شما کتابی تمام می‌خواند — '
+        'پس لحظه‌ای مهلتش دهید.',
+    'Sometimes you know the meaning but not the word. Here the dictionary does '
+        'not search the headwords; it reads every definition letter by letter '
+        'until it finds what you described. It is slower than its brothers '
+        'because it reads a whole book for you — so give it a moment.',
+  );
+  String get guideDeepExample => _pick(
+    'اكتب «الأسد» — تأتيك كل كلمة ذُكر الأسد في شرحها، ولو لم تكن هي «أسد».',
+    '«الأسد» ولیکئ — هره کلمه راځي چې زمری یې په شرح کې یاد شوی، که څه هم '
+        'پخپله «أسد» نه وي.',
+    '«الأسد» بنویسید — هر واژه‌ای می‌آید که شیر در شرحش یاد شده، هرچند خودش '
+        '«أسد» نباشد.',
+    'Type "الأسد" — every word whose definition mentions the lion arrives, '
+        'even when the word itself is not "أسد".',
+  );
+
+  String get guideEntryBody => _pick(
+    'حين تلمس كلمة تُفتح لك صفحتها. الشروح فيها مرقّمة: ١، ٢، ٣ — '
+        'فتعرف كم شرحًا لهذه الكلمة، وأين أنت منها. وفوق كل مجموعة اسمُ '
+        'المعجم الذي جاءت منه، ملوّنًا بلونه.',
+    'کله چې یوه کلمه ولمسئ، پاڼه یې پرانیستل کیږي. شرحې پکې شمېرل شوې دي: '
+        '۱، ۲، ۳ — نو پوهیږئ چې دې کلمې څو شرحې لري او تاسو په کومې کې یاست. '
+        'د هرې ډلې پر سر د هغه معجم نوم دی چې ترې راغلې، په خپل رنګ رنګ شوی.',
+    'چون واژه‌ای را لمس کنید، صفحه‌اش گشوده می‌شود. شرح‌ها در آن شماره '
+        'خورده‌اند: ۱، ۲، ۳ — پس می‌دانید این واژه چند شرح دارد و شما کجای '
+        'آن ایستاده‌اید. بالای هر دسته، نام فرهنگی است که از آن آمده، به رنگ خود.',
+    'Touch a word and its page opens. The definitions there are numbered — 1, '
+        '2, 3 — so you know how many this word has and where you stand among '
+        'them. Above each group sits the name of the lexicon it came from, in '
+        'its own colour.',
+  );
+
+  String get guideCopyBody => _pick(
+    'بجانب كل شرحٍ زرٌّ صغير للنسخ. تضغطه فيُؤخذ الشرح كلّه — نصّه والكلمة '
+        'واسم معجمه — إلى الحافظة، فتلصقه في رسالة أو دفتر أو بحث. '
+        'وفي أعلى الصفحة زرٌّ ينسخ المدخل بأكمله دفعةً واحدة.',
+    'د هرې شرحې څنګ ته یوه کوچنۍ د کاپي تڼۍ ده. کېکاږئ یې، نو ټوله شرح — '
+        'متن یې، کلمه یې او د معجم نوم یې — کاپي کیږي، بیا یې په یو پیغام، '
+        'کتابچه یا څېړنه کې پیسټ کړئ. د پاڼې پر سر یوه تڼۍ ده چې ټول مدخل '
+        'په یوه ځل کاپي کوي.',
+    'کنار هر شرح دکمه‌ای کوچک برای رونوشت است. آن را بفشارید تا همهٔ شرح — '
+        'متنش، واژه‌اش و نام فرهنگش — رونوشت شود و در پیامی، دفتری یا پژوهشی '
+        'بچسبانیدش. بالای صفحه نیز دکمه‌ای است که همهٔ مدخل را یکجا رونوشت می‌کند.',
+    'Beside every definition is a small copy button. Press it and the whole '
+        'definition — its text, its word and its lexicon\'s name — goes to the '
+        'clipboard, ready to paste into a message, a notebook or an essay. At '
+        'the top of the page one button copies the entire entry at once.',
+  );
+
+  String get guideSaveBody => _pick(
+    'إذا أعجبتك كلمة فاحفظها بهذا الزرّ، تجدها بعدُ في «المفضّلة» ولو بعد شهر. '
+        'وهي كأنّك تطوي ركن الصفحة في كتابٍ تحبّه.',
+    'که کومه کلمه درخوښه شوه، په دې تڼۍ یې خوندي کړئ؛ بیا یې په «خوښ شوي» '
+        'کې مومئ، که یوه میاشت هم تېره شي. دا داسې ده لکه د خوښې کتاب د پاڼې '
+        'ګوټ چې راټول کړئ.',
+    'اگر واژه‌ای را پسندیدید، با این دکمه ذخیره‌اش کنید؛ سپس در «برگزیده‌ها» '
+        'می‌یابیدش، حتی پس از ماهی. چنان است که گوشهٔ صفحهٔ کتابی محبوب را تا کنید.',
+    'If a word pleases you, save it with this button and you will find it in '
+        '"Favourites" a month later. It is like folding the corner of a page in '
+        'a book you love.',
+  );
+
+  String get guideRecentBody => _pick(
+    'كل كلمة تفتحها تُسجَّل هنا وحدها، دون أن تطلب. فإذا ضاعت منك كلمة '
+        'قرأتها البارحة، فهي في هذا الباب تنتظرك.',
+    'هره کلمه چې پرانیځئ، پخپله دلته ثبتیږي، بې له دې چې وغواړئ. که کومه '
+        'کلمه چې پرون مو لوستې وه ورکه شي، په همدې دروازه کې ستاسو په تمه ده.',
+    'هر واژه‌ای که باز کنید، خودبه‌خود اینجا ثبت می‌شود، بی‌آنکه بخواهید. '
+        'اگر واژه‌ای که دیروز خواندید گم شد، در همین در چشم‌به‌راه شماست.',
+    'Every word you open is recorded here on its own, without your asking. If '
+        'a word you read yesterday has slipped away, it waits for you behind '
+        'this door.',
+  );
+
+  String get guideSettingsBody => _pick(
+    'هنا تُفصّل التطبيق على مقاسك: لغته، ولونه ليلًا ونهارًا، وحجم الخطّ '
+        'إن ضعُف البصر، والتشكيل إن أردت النصّ مجرّدًا.',
+    'دلته اپلیکیشن پر خپل اندازه جوړوئ: ژبه یې، د شپې او ورځې رنګ یې، د '
+        'لیکنې کچه که سترګې کمزورې وي، او تشکیل که ساده متن غواړئ.',
+    'اینجا برنامه را به اندازهٔ خود می‌دوزید: زبانش، رنگ شب و روزش، اندازهٔ '
+        'خطش اگر چشم ناتوان است، و اِعراب اگر متن ساده می‌خواهید.',
+    'Here you cut the app to your own measure: its language, its colour by day '
+        'and night, the size of the type if the eyes are tired, and the marks if '
+        'you would rather have bare text.',
+  );
+  String get guideLanguageBody => _pick(
+    'تُترجَم كل كتابة في التطبيق إلى لغتك — عربية أو پښتو أو فارسية أو '
+        'إنجليزية. أمّا شروح المعاجم فتبقى بالعربية دائمًا، لأنّها هي '
+        'الكتب نفسها ولا تُترجَم.',
+    'په اپلیکیشن کې هره لیکنه ستاسو ژبې ته ژباړل کیږي — عربي، پښتو، فارسي '
+        'یا انګلیسي. خو د معاجمو شرحې تل په عربي پاتې کیږي، ځکه هغه پخپله '
+        'کتابونه دي او نه ژباړل کیږي.',
+    'هر نوشتهٔ برنامه به زبان شما برگردانده می‌شود — عربی، پشتو، فارسی یا '
+        'انگلیسی. اما شرح‌های فرهنگ‌ها همیشه عربی می‌مانند، زیرا خودِ '
+        'کتاب‌هایند و ترجمه نمی‌شوند.',
+    'Every word of the interface is translated into your language — Arabic, '
+        'Pashto, Persian or English. The lexicon definitions stay Arabic, '
+        'because they are the books themselves and are not translated.',
+  );
+  String get guideOfflineBody => _pick(
+    'المعجم كلّه في جهازك، لا في الإنترنت. يعمل في الطائرة، وفي القرية، '
+        'وفي الجبل حيث لا شبكة. ولا يرسل عنك شيئًا إلى أحد.',
+    'ټول قاموس ستاسو په وسیله کې دی، نه په انټرنټ کې. په الوتکه کې، په کلي '
+        'کې او په غره کې کار کوي هلته چې شبکه نشته. او ستاسو په اړه هېڅ چا '
+        'ته څه نه لېږي.',
+    'همهٔ فرهنگ در دستگاه شماست، نه در اینترنت. در هواپیما، در روستا و در '
+        'کوه که شبکه‌ای نیست کار می‌کند. و دربارهٔ شما چیزی به کسی نمی‌فرستد.',
+    'The whole dictionary lives on your device, not on the internet. It works '
+        'on an aeroplane, in a village, on a mountain with no signal. And it '
+        'sends nothing about you to anyone.',
+  );
+
   // ------------------------------------------------------- counted nouns
   String _arabicCount(int n, String one, String two, String few, String many) =>
       switch (n) {

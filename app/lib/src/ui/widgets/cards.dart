@@ -13,7 +13,7 @@ class ColourCard extends StatelessWidget {
     required this.accent,
     required this.child,
     this.onTap,
-    this.padding = const EdgeInsets.all(18),
+    this.padding = const EdgeInsetsGeometry.all(18),
     this.height,
     this.watermark,
   });
@@ -21,7 +21,7 @@ class ColourCard extends StatelessWidget {
   final Color accent;
   final Widget child;
   final VoidCallback? onTap;
-  final EdgeInsets padding;
+  final EdgeInsetsGeometry padding;
   final double? height;
 
   /// A big translucent glyph bled off the trailing edge, for depth.
@@ -72,13 +72,13 @@ class SurfaceCard extends StatelessWidget {
     super.key,
     required this.child,
     this.onTap,
-    this.padding = const EdgeInsets.all(16),
+    this.padding = const EdgeInsetsGeometry.all(16),
     this.accent,
   });
 
   final Widget child;
   final VoidCallback? onTap;
-  final EdgeInsets padding;
+  final EdgeInsetsGeometry padding;
 
   /// When set, the card wears a faint tint and border of this colour.
   final Color? accent;

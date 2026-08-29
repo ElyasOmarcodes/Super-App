@@ -13,10 +13,14 @@ Arabic and English.
 
 | | |
 |---|---|
-| ![the dashboard](docs/screens/dashboard.png) | ![search results](docs/screens/search.png) |
-| *the dashboard: word of the day, corpus at a glance, the six lexicons* | *live results, collapsed by headword* |
-| ![an entry](docs/screens/entry.png) | ![dark](docs/screens/dark.png) |
-| *every sense, grouped by its source* | *near-black by night* |
+| ![the splash screen](docs/screens/splash.png) | ![the dashboard](docs/screens/dashboard.png) |
+| *the mark, the name, the author, the build* | *word of the day, corpus at a glance, the six lexicons* |
+| ![search results](docs/screens/search.png) | ![an entry](docs/screens/entry.png) |
+| *live results, collapsed by headword* | *every definition numbered, each one copyable on its own* |
+| ![the guide](docs/screens/guide.png) | ![the author](docs/screens/developer.png) |
+| *the manual shows the real control, then explains it plainly* | *who made it, and three ways to reach him* |
+| ![dark](docs/screens/dark.png) | |
+| *near-black by night, with the navigation curtain* | |
 
 ---
 
@@ -32,7 +36,10 @@ Arabic and English.
 | **د شرحو لټون** | د معناګانو په متن کې لټون |
 | **د جذرونو تصفح** | لکه چاپي قاموس: جذر وټاکه، مشتقات یې وګوره |
 | **محفوظات** | نښه شوې کلمې او د لوستلو تاریخچه |
-| **مډرن ډیزاین** | سپین/تور بک ګراند، رنګین کارټونه، نرم انمیشنونه |
+| **شمېرل شوي تفصیلات** | هر شرح خپل عدد لري، او خپله د کاپي تڼۍ — د معجم له نامه سره |
+| **د کارونې لارښود** | هر افشن په ساده ژبه، د خپلې ریښتینې بڼې او مثال سره |
+| **د پروګرامر پاڼه** | م. الیاس عمر — واټساپ، ټلګرام، بریښنالیک، هر یو په یوه کلیک |
+| **مډرن ډیزاین** | سپین/تور بک ګراند، رنګین کارټونه، نرم انمیشنونه، ټولټیپونه |
 
 ### Six source lexicons
 
@@ -186,6 +193,22 @@ on screen ever falls back to a system font.
 Every looping animation (the rosette, the aurora wash) stops when the system
 asks for reduced motion, which also makes them testable.
 
+The four tabs float over a **navigation curtain**: a gradient exactly as tall
+as the bar itself, opaque at the floor and clear at its top edge, so a list
+scrolling underneath dissolves into the background instead of colliding with
+the bar. Tabs, the menu, the lexicon filter and every copy button answer a
+long press with their own name.
+
+### The manual
+
+`lib/src/ui/guide_page.dart` explains every control in language a child could
+follow — no SQLite, no indexes, no isolates — and shows each one **as the real
+widget**: the guide's mode pills are `ModePill`, its navigation bar is
+`SoftNavigationBar`, its search box is the themed `TextField`. A drawing of a
+button would go stale the first time the button changed; the button itself
+cannot. Each lesson ends with a worked example — type `يب` and see حَبيب,
+طَبيب, غَريب — and a test asserts the jargon stays out, in all four languages.
+
 ---
 
 ## جوړول / Building
@@ -193,7 +216,7 @@ asks for reduced motion, which also makes them testable.
 ```bash
 cd app
 flutter pub get
-flutter test                       # 46 tests, run against the real corpus
+flutter test                       # 60 tests, run against the real corpus
 flutter run -d windows             # or android, or ios
 ```
 
@@ -246,8 +269,10 @@ Pushing a `v*` tag additionally publishes them as a GitHub release.
 app/
   lib/src/data/     arabic · corpus · bootstrap · dictionary · models · settings
   lib/src/l10n/     locales · strings          four languages, one table
-  lib/src/ui/       shell · dashboard · home · entry · roots · deep_search
-                    library · settings · about · onboarding/
+  lib/src/ui/       shell · splash · dashboard · home · entry · roots
+                    deep_search · library · settings · guide · developer
+                    about · onboarding/
+  lib/src/developer.dart                       the author, and the version
   lib/src/theme.dart
   assets/db/        qamus.corpus.xz            the packed corpus
   assets/fonts/     Vazirmatn                  subset to the Arabic ranges

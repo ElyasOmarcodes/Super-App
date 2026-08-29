@@ -237,3 +237,154 @@ class EmptyNote extends StatelessWidget {
     );
   }
 }
+
+/// One of the five search modes, as a pill.
+///
+/// Lives here rather than beside the search bar so the guide can show the
+/// reader the very same widget they will tap, not a drawing of it.
+class ModePill extends StatelessWidget {
+  const ModePill({
+    super.key,
+    required this.label,
+    required this.selected,
+    this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Pressable(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 240),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: selected ? QamusTheme.gradient(QamusTheme.violet) : null,
+          color: selected ? null : scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: selected ? Colors.transparent : scheme.outlineVariant,
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: QamusTheme.violet.withValues(alpha: 0.32),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: theme.textTheme.labelMedium?.copyWith(
+            color: selected ? Colors.white : scheme.onSurface,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The pill that says which lexicons the search is confined to.
+class BookFilterPill extends StatelessWidget {
+  const BookFilterPill({
+    super.key,
+    required this.label,
+    required this.filtered,
+    this.onTap,
+  });
+
+  final String label;
+  final bool filtered;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Pressable(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+        decoration: BoxDecoration(
+          color: filtered
+              ? QamusTheme.violet.withValues(alpha: 0.13)
+              : scheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(30),
+          border: Border.all(
+            color: filtered
+                ? QamusTheme.violet.withValues(alpha: 0.4)
+                : scheme.outlineVariant,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              filtered ? Icons.filter_alt_rounded : Icons.library_books_rounded,
+              size: 16,
+              color: filtered ? QamusTheme.violet : scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 7),
+            Text(
+              label,
+              textDirection: filtered ? TextDirection.rtl : null,
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: filtered ? QamusTheme.violet : scheme.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The small circled numeral that marks each definition on an entry page.
+class OrdinalBadge extends StatelessWidget {
+  const OrdinalBadge({
+    super.key,
+    required this.label,
+    required this.colour,
+    this.size = 26,
+  });
+
+  final String label;
+  final Color colour;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: colour.withValues(alpha: 0.14),
+        shape: BoxShape.circle,
+        border: Border.all(color: colour.withValues(alpha: 0.34)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: QamusTheme.font,
+          fontSize: size * 0.46,
+          height: 1.5,
+          fontWeight: FontWeight.w700,
+          color: colour,
+        ),
+      ),
+    );
+  }
+}

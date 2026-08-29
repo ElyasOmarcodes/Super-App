@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../app.dart';
 import '../data/arabic.dart';
 import '../data/models.dart';
+import '../data/settings.dart';
 import '../theme.dart';
 import 'books_sheet.dart';
 import 'widgets/cards.dart';
@@ -144,6 +145,9 @@ class _EntryPageState extends State<EntryPage> {
                   child: _SenseCard(
                     sense: sense,
                     book: book,
+                    // Numbered straight through the page, so "the third
+                    // definition" means the same thing to two readers.
+                    ordinal: index + 1,
                     showBookHeader: isFirstOfBook,
                   ),
                 );
@@ -271,12 +275,33 @@ class _SenseCard extends StatelessWidget {
   const _SenseCard({
     required this.sense,
     required this.book,
+    required this.ordinal,
     required this.showBookHeader,
   });
 
   final Sense sense;
   final Book? book;
+  final int ordinal;
   final bool showBookHeader;
+
+  /// What lands on the clipboard: the lexicon it came from, the word as that
+  /// lexicon spells it, and every line of the definition.
+  String _asText(Settings settings) {
+    final buffer = StringBuffer();
+    if (book != null) buffer.writeln('[${book!.name}]');
+    buffer.writeln(settings.showVowels ? sense.word : stripMarks(sense.word));
+    for (final line in sense.lines) {
+      buffer.writeln(settings.showVowels ? line : stripMarks(line));
+    }
+    return buffer.toString().trimRight();
+  }
+
+  void _copy(BuildContext context, Settings settings) {
+    Clipboard.setData(ClipboardData(text: _asText(settings)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(context.str.senseCopied)));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -309,13 +334,44 @@ class _SenseCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  settings.showVowels ? sense.word : stripMarks(sense.word),
-                  textDirection: TextDirection.rtl,
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    color: color,
-                    fontSize: 20 * settings.textScale,
-                  ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    OrdinalBadge(label: strings.n(ordinal), colour: color),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 1),
+                        child: Text(
+                          settings.showVowels
+                              ? sense.word
+                              : stripMarks(sense.word),
+                          textDirection: TextDirection.rtl,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: color,
+                            fontSize: 20 * settings.textScale,
+                          ),
+                        ),
+                      ),
+                    ),
+                    // Small enough to stay out of the way of the text, big
+                    // enough to be a comfortable target.
+                    SizedBox(
+                      width: 34,
+                      height: 34,
+                      child: IconButton(
+                        tooltip: strings.copySense,
+                        padding: EdgeInsets.zero,
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () => _copy(context, settings),
+                        icon: Icon(
+                          Icons.copy_rounded,
+                          size: 17,
+                          color: color.withValues(alpha: 0.85),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 if (sense.lines.isEmpty)
@@ -327,18 +383,35 @@ class _SenseCard extends StatelessWidget {
                       child: Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            margin: const EdgeInsetsDirectional.only(
-                              top: 12,
-                              end: 10,
+                          // A single line needs no number of its own — the
+                          // card already carries one.
+                          if (sense.lines.length > 1)
+                            Padding(
+                              padding: const EdgeInsetsDirectional.only(
+                                top: 7,
+                                end: 8,
+                              ),
+                              child: Text(
+                                '${strings.n(i + 1)}.',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: color.withValues(alpha: 0.9),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            )
+                          else
+                            Container(
+                              margin: const EdgeInsetsDirectional.only(
+                                top: 12,
+                                end: 10,
+                              ),
+                              width: 5,
+                              height: 5,
+                              decoration: BoxDecoration(
+                                color: color.withValues(alpha: 0.7),
+                                shape: BoxShape.circle,
+                              ),
                             ),
-                            width: 5,
-                            height: 5,
-                            decoration: BoxDecoration(
-                              color: color.withValues(alpha: 0.7),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
                           Expanded(
                             child: SelectableText(
                               settings.showVowels

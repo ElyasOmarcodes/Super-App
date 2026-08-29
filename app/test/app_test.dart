@@ -1,26 +1,33 @@
 @Timeout(Duration(minutes: 6))
 library;
 
+import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qamus/src/app.dart';
 import 'package:qamus/src/data/corpus.dart';
 import 'package:qamus/src/data/dictionary.dart';
+import 'package:qamus/src/data/bootstrap.dart';
 import 'package:qamus/src/data/settings.dart';
+import 'package:qamus/src/developer.dart';
 import 'package:qamus/src/l10n/locales.dart';
 import 'package:qamus/src/l10n/strings.dart';
 import 'package:qamus/src/theme.dart';
+import 'package:qamus/src/ui/developer_page.dart';
 import 'package:qamus/src/ui/entry_page.dart';
+import 'package:qamus/src/ui/guide_page.dart';
 import 'package:qamus/src/ui/home_page.dart';
 import 'package:qamus/src/ui/library_page.dart';
 import 'package:qamus/src/ui/onboarding/onboarding_flow.dart';
 import 'package:qamus/src/ui/roots_page.dart';
 import 'package:qamus/src/ui/settings_page.dart';
 import 'package:qamus/src/ui/shell.dart';
+import 'package:qamus/src/ui/splash_page.dart';
+import 'package:qamus/src/ui/widgets/common.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Drives the real widget tree against the real corpus.
@@ -56,7 +63,14 @@ void main() {
     WidgetTester tester, {
     Widget home = const AppShell(),
     Map<String, Object> prefs = const {},
+    Size? size,
   }) async {
+    // A lazy list only builds what fits the *render surface*; MediaQuery data
+    // alone does not resize it. Long pages therefore ask for a tall one.
+    if (size != null) {
+      await tester.binding.setSurfaceSize(size);
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+    }
     SharedPreferences.setMockInitialValues(prefs);
     final settings = await Settings.load(dictionary.books.map((b) => b.id));
     await tester.pumpWidget(
@@ -70,8 +84,8 @@ void main() {
               // The rosette and the aurora loop forever, so pumpAndSettle can
               // never finish while they run. Asking for reduced motion — the
               // same signal an accessibility setting sends — stills them.
-              data: const MediaQueryData(
-                size: Size(420, 900),
+              data: MediaQueryData(
+                size: size ?? const Size(420, 900),
                 disableAnimations: true,
               ),
               child: Directionality(
@@ -350,6 +364,52 @@ void main() {
           s.aboutProgramBody('1', '6'),
           s.hiddenSenses(3),
           s.resultHeader(3, 'x', 'y'),
+          s.developerRole,
+          s.developerTeacher,
+          s.developerBio,
+          s.contactTitle,
+          s.contactDetail,
+          s.whatsappLabel,
+          s.telegramLabel,
+          s.emailLabel,
+          s.platformsTitle,
+          s.teachesTitle,
+          s.copyLabel,
+          s.copiedToClipboard,
+          s.couldNotOpen,
+          s.copySense,
+          s.senseCopied,
+          s.menuLabel,
+          s.searchModeLabel,
+          s.guide,
+          s.guideDetail,
+          s.guideIntro,
+          s.guideExampleLabel,
+          s.guideOpenIt,
+          s.guideChapterEntry,
+          s.guideChapterOffline,
+          s.guideChapterSearch,
+          s.guideSearchBody,
+          s.guideStartsBody,
+          s.guideStartsExample,
+          s.guideEndsBody,
+          s.guideEndsExample,
+          s.guideContainsBody,
+          s.guideContainsExample,
+          s.guideExactBody,
+          s.guideExactExample,
+          s.guideRootBody,
+          s.guideRootExample,
+          s.guideBooksBody,
+          s.guideDeepBody,
+          s.guideDeepExample,
+          s.guideEntryBody,
+          s.guideCopyBody,
+          s.guideSaveBody,
+          s.guideRecentBody,
+          s.guideSettingsBody,
+          s.guideLanguageBody,
+          s.guideOfflineBody,
         ];
         for (final value in values) {
           expect(
@@ -358,6 +418,314 @@ void main() {
             reason: 'empty string in ${locale.code}',
           );
         }
+      }
+    });
+  });
+
+  group('the entry page', () {
+    testWidgets('numbers every definition and offers to copy each one', (
+      tester,
+    ) async {
+      await pumpApp(tester, home: const EntryPage(entryKey: 'كتب'));
+      const strings = Strings(AppLocale.ar);
+
+      // One badge and one copy button per definition on screen.
+      final badges = find.byType(OrdinalBadge);
+      expect(badges, findsWidgets);
+      expect(find.text(strings.n(1)), findsWidgets);
+      expect(
+        find.byTooltip(strings.copySense),
+        findsWidgets,
+        reason: 'each definition carries its own copy button',
+      );
+
+      // They count up rather than all reading "1".
+      expect(find.text(strings.n(2)), findsWidgets);
+    });
+
+    testWidgets('copying one definition takes its lexicon with it', (
+      tester,
+    ) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      await pumpApp(tester, home: const EntryPage(entryKey: 'كتب'));
+      const strings = Strings(AppLocale.ar);
+
+      await tester.tap(find.byTooltip(strings.copySense).first);
+      await tester.pumpAndSettle();
+
+      expect(copied, isNotNull);
+      // The lexicon's own name is on the first line, in brackets.
+      expect(copied, startsWith('['));
+      final book = dictionary.books.firstWhere(
+        (b) => copied!.startsWith('[${b.name}]'),
+        orElse: () => dictionary.books.first,
+      );
+      expect(copied, contains(book.name));
+      expect(copied!.trim().split('\n').length, greaterThan(1));
+    });
+  });
+
+  group('the author', () {
+    testWidgets('the profile names him and lists all three ways to reach him', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const DeveloperPage(),
+        size: const Size(420, 2600),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      expect(find.text(Developer.name), findsOneWidget);
+      expect(find.text(strings.developerRole), findsWidgets);
+
+      for (final value in [
+        Developer.whatsappNumber,
+        Developer.telegramHandle,
+        Developer.email,
+      ]) {
+        expect(find.text(value), findsOneWidget, reason: value);
+      }
+      for (final label in [
+        strings.whatsappLabel,
+        strings.telegramLabel,
+        strings.emailLabel,
+      ]) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
+    });
+
+    testWidgets('the platforms he builds for are all three named', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const DeveloperPage(),
+        size: const Size(420, 2600),
+      );
+      for (final platform in ['Android', 'iOS', 'Windows']) {
+        expect(find.text(platform), findsOneWidget, reason: platform);
+      }
+    });
+
+    testWidgets('a contact row copies its address', (tester) async {
+      String? copied;
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        (call) async {
+          if (call.method == 'Clipboard.setData') {
+            copied = (call.arguments as Map)['text'] as String?;
+          }
+          return null;
+        },
+      );
+      addTearDown(
+        () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          null,
+        ),
+      );
+
+      await pumpApp(
+        tester,
+        home: const DeveloperPage(),
+        size: const Size(420, 2600),
+      );
+      await tester.tap(
+        find.byTooltip(const Strings(AppLocale.ar).copyLabel).first,
+      );
+      await tester.pumpAndSettle();
+      expect(copied, Developer.whatsappNumber);
+    });
+
+    testWidgets('the contact links point at the right services', (_) async {
+      expect(Developer.whatsapp.toString(), 'https://wa.me/93766465848');
+      expect(Developer.telegram.toString(), 'https://t.me/Elyas_Omar');
+      expect(Developer.mail.toString(), 'mailto:${Developer.email}');
+    });
+  });
+
+  group('the splash screen', () {
+    testWidgets('signs the app with its author, its toolkit and its build', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: SplashPage(
+          progress: const Stream<BootstrapProgress>.empty(),
+          onRetry: () {},
+        ),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      expect(find.text(strings.appName), findsOneWidget);
+      expect(find.text(Developer.name), findsOneWidget);
+      expect(find.text('By Flutter'), findsOneWidget);
+      expect(find.text('v$kAppVersion'), findsOneWidget);
+    });
+
+    testWidgets('stays a splash while there is nothing to unpack', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: SplashPage(
+          progress: const Stream<BootstrapProgress>.empty(),
+          onRetry: () {},
+        ),
+      );
+      // No bar, no stage caption: a returning reader is not told about a
+      // database they already have.
+      expect(find.byType(LinearProgressIndicator), findsNothing);
+      expect(find.text(const Strings(AppLocale.ar).onceOnly), findsNothing);
+    });
+
+    testWidgets('shows the unpacking progress on a first launch', (
+      tester,
+    ) async {
+      final controller = StreamController<BootstrapProgress>.broadcast();
+      addTearDown(controller.close);
+
+      await pumpApp(
+        tester,
+        home: SplashPage(progress: controller.stream, onRetry: () {}),
+      );
+      controller.add(const BootstrapProgress(BootstrapStage.indexing, 0.5));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+      expect(find.text(const Strings(AppLocale.ar).indexing), findsOneWidget);
+    });
+  });
+
+  group('the guide', () {
+    testWidgets('shows each search mode as the very pill the reader taps', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const GuidePage(),
+        size: const Size(420, 7000),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      // Not a drawing of a pill — the same widget class the search bar uses.
+      expect(find.byType(ModePill), findsNWidgets(5));
+      for (final label in [
+        strings.modeStarts,
+        strings.modeEnds,
+        strings.modeContains,
+        strings.modeExact,
+        strings.modeRoot,
+      ]) {
+        expect(find.text(label), findsWidgets, reason: label);
+      }
+    });
+
+    testWidgets('every mode is explained with a worked example', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const GuidePage(),
+        size: const Size(420, 7000),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      for (final example in [
+        strings.guideStartsExample,
+        strings.guideEndsExample,
+        strings.guideContainsExample,
+        strings.guideExactExample,
+        strings.guideRootExample,
+        strings.guideDeepExample,
+      ]) {
+        expect(find.text(example), findsOneWidget, reason: example);
+      }
+    });
+
+    testWidgets('the explanations avoid the jargon they used to lean on', (
+      tester,
+    ) async {
+      // The reader asked for language a child could follow; these are the
+      // words the old "how it works" text reached for.
+      const jargon = ['SQLite', 'deflate', 'B-tree', 'isolate', 'LZMA'];
+      for (final locale in AppLocale.values) {
+        final s = Strings(locale);
+        final text = [
+          s.guideIntro,
+          s.guideSearchBody,
+          s.guideStartsBody,
+          s.guideEndsBody,
+          s.guideContainsBody,
+          s.guideExactBody,
+          s.guideRootBody,
+          s.guideBooksBody,
+          s.guideDeepBody,
+          s.guideEntryBody,
+          s.guideCopyBody,
+          s.guideSaveBody,
+          s.guideRecentBody,
+          s.guideSettingsBody,
+          s.guideLanguageBody,
+          s.guideOfflineBody,
+        ].join(' ');
+        for (final word in jargon) {
+          expect(
+            text.toLowerCase().contains(word.toLowerCase()),
+            isFalse,
+            reason: '"$word" in ${locale.code}',
+          );
+        }
+      }
+    });
+  });
+
+  group('the navigation curtain', () {
+    testWidgets('stands exactly as tall as the bar that floats on it', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+
+      expect(find.byType(NavigationScrim), findsOneWidget);
+      final context = tester.element(find.byType(NavigationScrim));
+      final scrim = tester.getSize(find.byType(NavigationScrim));
+      expect(scrim.height, navigationBarHeight(context));
+
+      // And it sits under the bar, not over it: nothing about the curtain
+      // may swallow a tab tap.
+      const strings = Strings(AppLocale.ar);
+      await tester.tap(find.text(strings.navSettings));
+      await tester.pumpAndSettle();
+      expect(find.byType(SettingsPage), findsOneWidget);
+    });
+
+    testWidgets('every tab names itself for a long press', (tester) async {
+      await pumpApp(tester);
+      const strings = Strings(AppLocale.ar);
+      for (final label in [
+        strings.navHome,
+        strings.navFavourites,
+        strings.navRecent,
+        strings.navSettings,
+      ]) {
+        expect(find.byTooltip(label), findsOneWidget, reason: label);
       }
     });
   });

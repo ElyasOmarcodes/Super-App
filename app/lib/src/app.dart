@@ -9,8 +9,8 @@ import 'l10n/locales.dart';
 import 'l10n/strings.dart';
 import 'theme.dart';
 import 'ui/onboarding/onboarding_flow.dart';
-import 'ui/setup_page.dart';
 import 'ui/shell.dart';
+import 'ui/splash_page.dart';
 
 /// Hands the opened dictionary, the user's settings and the active
 /// translations down the tree without pulling in a state-management package.
@@ -62,10 +62,18 @@ class _QamusAppState extends State<QamusApp> {
   Settings? _settings;
   Object? _error;
 
+  /// The splash holds for its own entrance even when the dictionary opens
+  /// instantly, which it does on every launch after the first. Without this
+  /// the screen the app introduces itself with would flash past unread.
+  bool _splashSettled = false;
+
   @override
   void initState() {
     super.initState();
     _start();
+    Future<void>.delayed(const Duration(milliseconds: 1750), () {
+      if (mounted) setState(() => _splashSettled = true);
+    });
   }
 
   Future<void> _start() async {
@@ -137,7 +145,7 @@ class _QamusAppState extends State<QamusApp> {
     final dictionary = _dictionary;
     final settings = _settings;
 
-    if (dictionary == null || settings == null) {
+    if (dictionary == null || settings == null || !_splashSettled) {
       return MaterialApp(
         title: 'Qamus',
         debugShowCheckedModeBanner: false,
@@ -147,7 +155,7 @@ class _QamusAppState extends State<QamusApp> {
         locale: AppLocale.ar.locale,
         supportedLocales: _supported,
         builder: _shell(AppLocale.ar),
-        home: SetupPage(
+        home: SplashPage(
           progress: _bootstrap.progress,
           error: _error,
           onRetry: _retry,

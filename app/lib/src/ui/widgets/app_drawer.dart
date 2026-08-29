@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../app.dart';
+import '../../developer.dart';
 import '../../theme.dart';
 import '../about_page.dart';
 import '../deep_search_page.dart';
+import '../developer_page.dart';
+import '../guide_page.dart';
 import '../roots_page.dart';
 import 'motion.dart';
 
@@ -73,6 +76,15 @@ class AppDrawer extends StatelessWidget {
                   stagger(_Section(strings.about)),
                   stagger(
                     _Tile(
+                      icon: Icons.school_rounded,
+                      tint: QamusTheme.emerald,
+                      title: strings.guide,
+                      subtitle: strings.guideDetail,
+                      onTap: () => go(const GuidePage()),
+                    ),
+                  ),
+                  stagger(
+                    _Tile(
                       icon: Icons.info_rounded,
                       tint: QamusTheme.blue,
                       title: strings.aboutProgram,
@@ -85,8 +97,8 @@ class AppDrawer extends StatelessWidget {
                       icon: Icons.person_rounded,
                       tint: QamusTheme.rose,
                       title: strings.aboutDeveloper,
-                      onTap: () =>
-                          go(const AboutPage(section: AboutSection.developer)),
+                      subtitle: Developer.name,
+                      onTap: () => go(const DeveloperPage()),
                     ),
                   ),
                   stagger(
@@ -113,7 +125,7 @@ class AppDrawer extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
               child: Text(
-                '${strings.version} 1.0.0',
+                '${strings.version} $kAppVersion',
                 style: theme.textTheme.labelSmall,
               ),
             ),

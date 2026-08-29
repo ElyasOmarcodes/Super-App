@@ -6,6 +6,8 @@ import '../l10n/locales.dart';
 import '../theme.dart';
 import 'about_page.dart';
 import 'books_sheet.dart';
+import 'developer_page.dart';
+import 'guide_page.dart';
 import 'widgets/motion.dart';
 
 /// Language, appearance, reading preferences, sources and credits.
@@ -211,38 +213,45 @@ class SettingsPage extends StatelessWidget {
                 icon: Icons.info_rounded,
                 tint: scheme.tertiary,
                 children: [
-                  for (final entry in [
-                    (
-                      Icons.auto_stories_rounded,
-                      strings.aboutProgram,
-                      AboutSection.program,
-                    ),
-                    (
-                      Icons.person_rounded,
-                      strings.aboutDeveloper,
-                      AboutSection.developer,
-                    ),
-                    (
-                      Icons.lightbulb_rounded,
-                      strings.howItWorks,
-                      AboutSection.how,
-                    ),
-                    (
-                      Icons.workspace_premium_rounded,
-                      strings.licenses,
-                      AboutSection.licences,
-                    ),
-                  ])
+                  for (final (icon, label, page)
+                      in <(IconData, String, Widget)>[
+                        (
+                          Icons.school_rounded,
+                          strings.guide,
+                          const GuidePage(),
+                        ),
+                        (
+                          Icons.auto_stories_rounded,
+                          strings.aboutProgram,
+                          const AboutPage(section: AboutSection.program),
+                        ),
+                        (
+                          Icons.person_rounded,
+                          strings.aboutDeveloper,
+                          const DeveloperPage(),
+                        ),
+                        (
+                          Icons.lightbulb_rounded,
+                          strings.howItWorks,
+                          const AboutPage(section: AboutSection.how),
+                        ),
+                        (
+                          Icons.workspace_premium_rounded,
+                          strings.licenses,
+                          const AboutPage(section: AboutSection.licences),
+                        ),
+                      ])
                     ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(entry.$1, size: 21),
-                      title: Text(entry.$2, style: theme.textTheme.titleMedium),
-                      trailing: Icon(Icons.chevron_right_rounded, size: 20),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => AboutPage(section: entry.$3),
-                        ),
+                      leading: Icon(icon, size: 21),
+                      title: Text(label, style: theme.textTheme.titleMedium),
+                      trailing: const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 20,
                       ),
+                      onTap: () => Navigator.of(
+                        context,
+                      ).push(MaterialPageRoute<void>(builder: (_) => page)),
                     ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
