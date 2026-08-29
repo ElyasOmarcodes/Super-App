@@ -330,13 +330,99 @@ class Dictionary {
   ///
   /// Picking by row id rather than `ORDER BY RANDOM()` keeps this an O(1)
   /// primary-key lookup instead of a full scan.
-  /// The word of the day for [day]: the same word for everyone, everywhere,
-  /// chosen without scanning the corpus.
+  /// How many oddities the build found. Zero on a database built before the
+  /// curiosities table existed, which sends every caller back to [featured].
+  late final int curiosityCount = () {
+    try {
+      final rows = _db.select('SELECT COUNT(*) AS c FROM curios');
+      return rows.isEmpty ? 0 : rows.first['c'] as int;
+    } catch (_) {
+      return 0;
+    }
+  }();
+
+  /// The word of the day for [day]: the same word for everyone, everywhere.
   ///
-  /// Shared by the dashboard card and the notification scheduler so the two
-  /// can never disagree about what today's word is.
-  Featured? wordOfDay(DateTime day) =>
-      featured((day.year * 10000 + day.month * 100 + day.day) * 7919);
+  /// Drawn from the corpus's oddities rather than from all 219,764 entries,
+  /// because a dictionary should surprise you — and drawn by *permutation*
+  /// rather than at random, so that every one of them comes up exactly once
+  /// before any of them comes up twice. With tens of thousands of them that
+  /// is a cycle measured in centuries.
+  Featured? wordOfDay(DateTime day) {
+    final total = curiosityCount;
+    if (total == 0) {
+      // No curiosities: fall back to the old uniform pick over everything.
+      return featured(_dayOrdinal(day) * 7919);
+    }
+    // Walk a few steps in case the chosen entry has no definition recorded.
+    for (var step = 0; step < 6; step++) {
+      final word = curiosityAt(_dayOrdinal(day) + step);
+      if (word != null && word.preview.trim().isNotEmpty) return word;
+    }
+    return curiosityAt(_dayOrdinal(day));
+  }
+
+  /// A run of oddities either side of [day]'s word, for the treasures strip.
+  ///
+  /// They come from the same permutation, so the strip is never the same two
+  /// days running and never repeats a word the reader has just been shown.
+  List<Featured> curiositiesFor(DateTime day, {int count = 8}) {
+    if (curiosityCount == 0) return const [];
+    final ordinal = _dayOrdinal(day);
+    final found = <Featured>[];
+    for (var step = 1; found.length < count && step < count * 4; step++) {
+      final word = curiosityAt(ordinal + step);
+      if (word == null || word.preview.trim().isEmpty) continue;
+      if (found.any((f) => f.key == word.key)) continue;
+      found.add(word);
+    }
+    return found;
+  }
+
+  /// The [step]th word of the permutation over the curiosities.
+  Featured? curiosityAt(int step) {
+    final total = curiosityCount;
+    if (total == 0) return null;
+    // A stride coprime with the count makes n -> (n * stride) % total a
+    // permutation: every row is visited before any is visited twice.
+    final n = ((step.abs() % total) * _stride(total)) % total + 1;
+    final rows = _db.select(
+      '''
+      SELECT e.id, e.k, e.w, e.b, r.r AS root
+      FROM curios c
+      JOIN entries e ON e.id = c.id
+      LEFT JOIN roots r ON r.id = e.rid
+      WHERE c.n = ?
+    ''',
+      [n],
+    );
+    if (rows.isEmpty) return null;
+    final row = rows.first;
+    final lines = _splitSenses(definitionOf(row['id'] as int));
+    return Featured(
+      key: row['k'] as String,
+      word: row['w'] as String,
+      root: row['root'] as String?,
+      bookId: row['b'] as int,
+      preview: lines.isEmpty ? '' : lines.first,
+    );
+  }
+
+  /// Days since 1970 — the same number everywhere on earth for a given date.
+  static int _dayOrdinal(DateTime day) =>
+      DateTime.utc(day.year, day.month, day.day).millisecondsSinceEpoch ~/
+      Duration.millisecondsPerDay;
+
+  /// The first prime at or above 104,729 that shares no factor with [total].
+  static int _stride(int total) {
+    var stride = 104729;
+    while (_gcd(stride, total) != 1) {
+      stride++;
+    }
+    return stride;
+  }
+
+  static int _gcd(int a, int b) => b == 0 ? a : _gcd(b, a % b);
 
   Featured? featured(int seed) {
     final total = entryCount;

@@ -8,6 +8,7 @@ import 'package:archive/archive.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qamus/src/data/arabic.dart';
 import 'package:qamus/src/data/corpus.dart';
+import 'package:qamus/src/data/vault.dart';
 import 'package:qamus/src/data/dictionary.dart';
 import 'package:qamus/src/data/models.dart';
 
@@ -20,7 +21,7 @@ void main() {
 
   setUpAll(() async {
     workspace = Directory.systemTemp.createTempSync('qamus-test');
-    final asset = File('assets/db/qamus.corpus.xz');
+    final asset = File('assets/db/qamus.corpus.sealed');
     expect(
       asset.existsSync(),
       isTrue,
@@ -29,7 +30,12 @@ void main() {
 
     final target = '${workspace.path}/qamus.db';
     buildDatabase(
-      Uint8List.fromList(XZDecoder().decodeBytes(asset.readAsBytesSync())),
+      // Opened the same way the app opens it: unseal, then inflate.
+      Uint8List.fromList(
+        XZDecoder().decodeBytes(
+          CorpusVault.open(asset.readAsBytesSync(), corpusPassphrase()),
+        ),
+      ),
       target,
       (_, _) {},
     );

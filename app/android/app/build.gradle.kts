@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.qamus.qamus"
+    namespace = "com.elyasomar.arabic.qamus"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -19,10 +19,11 @@ android {
     }
 
     androidResources {
-        // The corpus is already LZMA2-compressed. Letting the packager deflate
-        // it again costs build time, grows the APK slightly, and forces an
-        // inflate on every read; storing it verbatim avoids all three.
-        noCompress += listOf("xz")
+        // The corpus is LZMA2-compressed and then sealed, so its bytes are
+        // indistinguishable from noise. Letting the packager deflate them
+        // again costs build time, grows the APK, and forces an inflate on
+        // every read; storing them verbatim avoids all three.
+        noCompress += listOf("sealed")
     }
 
     kotlinOptions {
@@ -31,7 +32,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.qamus.qamus"
+        applicationId = "com.elyasomar.arabic.qamus"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

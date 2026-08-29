@@ -14,13 +14,15 @@ Arabic and English.
 | | |
 |---|---|
 | ![the splash screen](docs/screens/splash.png) | ![the dashboard](docs/screens/dashboard.png) |
-| *the scalloped mark, turning as the app opens* | *word of the day, corpus at a glance, the six lexicons* |
+| *the scalloped mark, turning as the app opens* | *a genuine rarity every morning — الشَّوْصَة, and never the same word twice* |
 | ![search results](docs/screens/search.png) | ![an entry](docs/screens/entry.png) |
 | *live results, collapsed by headword* | *every definition numbered, each one copyable on its own* |
-| ![the guide](docs/screens/guide.png) | ![the author](docs/screens/developer.png) |
-| *the manual shows the real control, then explains it plainly* | *a circular portrait ringed by all six accents* |
+| ![treasures](docs/screens/treasures.png) | ![the guide](docs/screens/guide.png) |
+| *eight more oddities, changing daily* | *the manual shows the real control, then explains it plainly* |
+| ![the author](docs/screens/developer.png) | ![the author, on the way in](docs/screens/intro-author.png) |
+| *a circular portrait ringed by all six accents* | *the same portrait ends the introduction* |
 | ![asking for notifications](docs/screens/notify.png) | ![the privacy policy](docs/screens/privacy.png) |
-| *consent is asked for last, with a mock of the real thing* | *nothing leaves the device — and it links out to the hosted copy* |
+| *consent is asked for last, with a mock of the real thing* | *nine sections, everything a store listing has to answer* |
 | ![the sidebar](docs/screens/sidebar.png) | ![leaving](docs/screens/exit.png) |
 | *every way in, then the sources at the foot* | *the app asks before it closes* |
 | ![dark](docs/screens/dark.png) | ![choosing a language](docs/screens/onboarding.png) |
@@ -44,6 +46,8 @@ Arabic and English.
 | **د کارونې لارښود** | هر افشن په ساده ژبه، د خپلې ریښتینې بڼې او مثال سره |
 | **د پروګرامر پاڼه** | م. الیاس عمر — انځور، واټساپ، ټلګرام، بریښنالیک، هر یو په یوه کلیک |
 | **د ورځې کلمه** | نایټوفیکشن — اندروید، iOS، وینډوز؛ اجازه د معرفي پر مهال غوښتل کیږي |
+| **نادرې کلمې** | هره ورځ یوه عجیبه صیغه، هیڅکله تکرار نه — لکه الشَّوْصَة، القُضْعُل |
+| **تړل شوی ډیټابیس** | اثاثه کوډ شوې ده؛ که یې څوک له پیکجه راوباسي، شور دی نه قاموس |
 | **د وتلو تایید** | د پروګرام څخه وتل یو ښکلی ډیالوګ پوښتي |
 | **د محرمیت تګلاره** | په پروګرام کې او په `docs/privacy-policy.md` کې، په څلورو ژبو |
 | **مډرن ډیزاین** | سپین/تور بک ګراند، رنګین کارټونه، نرم انمیشنونه، ټولټیپونه |
@@ -206,6 +210,53 @@ scrolling underneath dissolves into the background instead of colliding with
 the bar. Tabs, the menu, the lexicon filter and every copy button answer a
 long press with their own name.
 
+### The sealed corpus
+
+The asset is not a bare `.xz` any more. `tools/seal_corpus.py` wraps it and
+`lib/src/data/vault.dart` opens it:
+
+```
+  magic  "QVLT1\0"                       6 bytes
+  salt   random                         16 bytes
+  tag    HMAC-SHA256(key, body)         32 bytes
+  body   xz XOR keystream(key, salt)    the rest
+
+  key        = PBKDF2-HMAC-SHA256(passphrase, salt, 20000)
+  keystream  = HMAC-SHA256(key, salt ‖ counter), counter = 0, 1, 2 …
+```
+
+The tag is checked *before* a byte is decrypted, so a tampered or truncated
+asset is refused rather than half-inflated into a crash. The passphrase is
+never a string literal on either side — it is a masked byte table assembled at
+the moment of use, so `strings` over the binary does not print it. A test
+asserts that the six bytes marking an xz stream appear nowhere in the shipped
+file.
+
+**What this buys, and what it does not.** It stops the corpus being *lifted* —
+copied out of the package and shipped inside somebody else's dictionary, which
+is the thing worth stopping. It does not make the corpus secret from the person
+holding the device: the key has to travel with the app that opens it, so a
+determined reader with a disassembler will find it, and the unsealed database
+sits on disk after the first launch regardless. Encryption whose key ships
+alongside its ciphertext is a lock on a door, not a vault — worth having, and
+worth being honest about.
+
+### The word of the day
+
+A dictionary should surprise you, so the daily word is drawn from the corpus's
+oddities rather than from all 219,764 entries. `_writeCuriosities` in
+`corpus.dart` builds the pool once, on first launch: a word qualifies if it is
+recorded by **exactly one** of the six lexicons (the commonplace words are in
+all of them), is four to nine letters and a single word, and carries one of
+Arabic's less-travelled letters — ظ ض ذ ث غ خ ص ط — which is what makes a word
+*look* strange as well as be strange.
+
+The choice is a **permutation**, not a random draw: `n → (n × stride) mod N`
+with a stride coprime to the pool size visits every word exactly once before
+repeating any. A test walks six years of dates and asserts no word comes up
+twice. The treasures strip takes the next eight in the same sequence, so it
+changes every day and never echoes the card above it.
+
 ### The mark
 
 `lib/src/ui/widgets/app_mark.dart` paints the launcher icon in Dart — the
@@ -276,7 +327,7 @@ cannot. Each lesson ends with a worked example — type `يب` and see حَبي�
 ```bash
 cd app
 flutter pub get
-flutter test                       # 79 tests, run against the real corpus
+flutter test                       # 91 tests, run against the real corpus
 flutter run -d windows             # or android, or ios
 ```
 
@@ -312,13 +363,16 @@ Three copies, one source of truth:
 | | |
 |---|---|
 | in the app | `lib/src/ui/privacy_page.dart`, in all four languages, with a button in the corner that opens the hosted copy in a browser |
+| the nine sections | the five the app always had, plus the four Google Play now requires: who the developer is, exactly what is accessed / collected / used / shared, how it is kept safe, and how long it is kept and how to delete it |
 | `docs/privacy-policy.html` | the English page to host — the app's own palette, cards and mark, as one self-contained file with no build step |
 | `docs/privacy-policy.md` | the same five sections in all four languages, generated from the app's strings |
 
 The hosted page is at
 <https://sites.google.com/view/qamoos-arabi/privacy>, which is what a Play
 Store listing points at. Tests assert that both the `.md` and the `.html`
-carry every heading the app shows, so the three cannot drift apart.
+carry every heading the app shows, so the three cannot drift apart —
+`privacySections()` is the single list all three read from, so a section
+added in one place cannot be forgotten in another.
 
 ![the hosted policy](docs/screens/policy-web.png)
 
@@ -359,6 +413,8 @@ app/
 docs/
   privacy-policy.html                          the page that gets hosted
   privacy-policy.md                            the same, in four languages
+tools/
+  seal_corpus.py    xz  ->  the sealed asset that ships
   lib/src/theme.dart
   assets/db/        qamus.corpus.xz            the packed corpus
   assets/fonts/     Vazirmatn                  subset to the Arabic ranges

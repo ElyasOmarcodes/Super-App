@@ -72,7 +72,7 @@ class WordNotifications {
   static const _channelId = 'daily_word';
 
   /// Windows identifies an app by this rather than by a permission grant.
-  static const _windowsAppId = 'ElyasOmar.Qamus.AlMaani.1';
+  static const _windowsAppId = 'ElyasOmar.Arabic.Qamus.1';
   static const _windowsGuid = '4b0d8f2e-6d3a-4a1c-9f7e-2c5a8b1d3e60';
 
   static NotifyPlatform get platform {

@@ -10,7 +10,7 @@ import 'arabic.dart';
 const int kChunkSize = 512;
 
 /// Bumped when the container format or the database layout changes.
-const int kCorpusVersion = 3;
+const int kCorpusVersion = 4;
 
 const List<int> _magic = [0x51, 0x41, 0x4D, 0x55, 0x53, 0x33, 0x00]; // QAMUS3\0
 
@@ -257,11 +257,58 @@ void buildDatabase(
     db.execute('CREATE INDEX i_entries_rid ON entries(rid)');
     db.execute('CREATE INDEX i_roots_r ON roots(r)');
     report(0.9, BuildStage.indexing);
+    _writeCuriosities(db);
     db.execute('ANALYZE');
     report(1, BuildStage.indexing);
   } finally {
     db.dispose();
   }
+}
+
+/// Picks out the corpus's oddities: the words worth waking someone with.
+///
+/// A word earns its place by being *rare* rather than merely long. Three
+/// tests, all cheap once the key index exists:
+///
+///  * it appears in exactly one of the six lexicons — the commonplace words
+///    are in all of them, so a word only al-Muhit or al-Ghani bothered to
+///    record is already unusual;
+///  * it is four to nine letters and a single word — shorter is usually a
+///    particle, longer is usually a phrase, and the normaliser drops spaces
+///    so a phrase can otherwise pass for a long word;
+///  * it carries one of Arabic's less-travelled letters — ظ ض ذ ث غ خ ص ط —
+///    which is what makes a word *look* strange as well as be strange.
+///
+/// The rows are numbered densely from 1, so choosing one is an O(1) lookup
+/// and the choice can be a permutation rather than a random draw.
+void _writeCuriosities(Database db) {
+  const rare = [
+    'ظ', // ظ
+    'ض', // ض
+    'ذ', // ذ
+    'ث', // ث
+    'غ', // غ
+    'خ', // خ
+    'ص', // ص
+    'ط', // ط
+  ];
+  final letters = rare.map((l) => "e.k LIKE '%$l%'").join(' OR ');
+
+  db
+    ..execute(
+      'CREATE TABLE curios (n INTEGER PRIMARY KEY, id INTEGER NOT NULL)',
+    )
+    ..execute(
+      'INSERT INTO curios(id) '
+      'SELECT MIN(e.id) FROM entries e '
+      'WHERE LENGTH(e.k) BETWEEN 4 AND 9 AND ($letters) '
+      // One word, not a phrase. The normaliser drops spaces, so without
+      // this a nine-letter key can be two ordinary words in a row —
+      // which is not a curiosity, it is a caption.
+      "AND e.w NOT LIKE '% %' "
+      'GROUP BY e.k HAVING COUNT(DISTINCT e.b) = 1 '
+      'ORDER BY e.k',
+    );
 }
 
 /// Writes the lookup forms and their links to the headwords they explain.

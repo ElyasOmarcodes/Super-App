@@ -8,7 +8,6 @@ import '../data/models.dart';
 import '../theme.dart';
 import 'books_sheet.dart';
 import 'dashboard.dart';
-import 'deep_search_page.dart';
 import 'widgets/cards.dart';
 import 'widgets/common.dart';
 import 'widgets/motion.dart';
@@ -17,11 +16,19 @@ export 'dashboard.dart' show decodeRecord;
 
 /// The search surface, and the dashboard the reader lands on before typing.
 class HomePage extends StatefulWidget {
-  const HomePage({super.key, this.onOpenMenu});
+  const HomePage({super.key, this.onOpenMenu, this.liveQuery});
 
   /// Opens the shell's drawer. Null when the page is shown on its own, as in
   /// a widget test, in which case the menu button is simply absent.
   final VoidCallback? onOpenMenu;
+
+  /// What is currently in the search box, published for the shell.
+  ///
+  /// The "search the definitions" button lives on the shell's Scaffold rather
+  /// than here, because anything drawn inside a tab sits *under* the
+  /// navigation curtain and comes out dimmed. The shell needs to know when
+  /// to show it, and with what.
+  final ValueNotifier<String>? liveQuery;
 
   @override
   State<HomePage> createState() => _HomePageState();
@@ -59,6 +66,7 @@ class _HomePageState extends State<HomePage> {
         _query = '';
         _searching = false;
       });
+      widget.liveQuery?.value = '';
       return;
     }
     setState(() => _searching = true);
@@ -74,6 +82,7 @@ class _HomePageState extends State<HomePage> {
       _query = key;
       _searching = false;
     });
+    widget.liveQuery?.value = value;
   }
 
   void _openEntry(String key) => openEntry(context, key);
@@ -149,25 +158,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ],
-        ),
-      ),
-      floatingActionButton: AnimatedSlide(
-        offset: _query.isEmpty ? const Offset(0, 2.4) : Offset.zero,
-        duration: const Duration(milliseconds: 320),
-        curve: Curves.easeOutCubic,
-        child: Padding(
-          padding: const EdgeInsets.only(bottom: 82),
-          child: FloatingActionButton.extended(
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => DeepSearchPage(initialQuery: _controller.text),
-              ),
-            ),
-            backgroundColor: QamusTheme.emerald,
-            foregroundColor: Colors.white,
-            icon: const Icon(Icons.travel_explore_rounded),
-            label: Text(strings.deepSearch),
-          ),
         ),
       ),
     );

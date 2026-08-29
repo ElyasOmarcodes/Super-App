@@ -26,38 +26,25 @@ class PrivacyPage extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final sections = <(IconData, Color, String, String)>[
-      (
-        Icons.block_rounded,
-        QamusTheme.emerald,
-        strings.privacyHeading1,
-        strings.privacyBody1,
-      ),
-      (
-        Icons.phone_android_rounded,
-        QamusTheme.blue,
-        strings.privacyHeading2,
-        strings.privacyBody2,
-      ),
-      (
-        Icons.verified_user_rounded,
-        QamusTheme.violet,
-        strings.privacyHeading3,
-        strings.privacyBody3,
-      ),
-      (
-        Icons.wifi_off_rounded,
-        QamusTheme.cyan,
-        strings.privacyHeading4,
-        strings.privacyBody4,
-      ),
-      (
-        Icons.menu_book_rounded,
-        QamusTheme.amber,
-        strings.privacyHeading5,
-        strings.privacyBody5,
-      ),
+    // Icons and tints, paired by position with privacySections — so adding
+    // a section in one place and forgetting the other is a compile error
+    // rather than a silently missing card.
+    const marks = <(IconData, Color)>[
+      (Icons.block_rounded, QamusTheme.emerald),
+      (Icons.phone_android_rounded, QamusTheme.blue),
+      (Icons.verified_user_rounded, QamusTheme.violet),
+      (Icons.wifi_off_rounded, QamusTheme.cyan),
+      (Icons.menu_book_rounded, QamusTheme.amber),
+      (Icons.badge_rounded, QamusTheme.violet),
+      (Icons.fact_check_rounded, QamusTheme.blue),
+      (Icons.lock_rounded, QamusTheme.emerald),
+      (Icons.auto_delete_rounded, QamusTheme.rose),
     ];
+    final sections = privacySections(strings);
+    assert(
+      marks.length == sections.length,
+      'every policy section needs an icon',
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -129,14 +116,14 @@ class PrivacyPage extends StatelessWidget {
                       Row(
                         children: [
                           IconBadge(
-                            icon: sections[i].$1,
-                            colour: sections[i].$2,
+                            icon: marks[i].$1,
+                            colour: marks[i].$2,
                             size: 34,
                           ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              sections[i].$3,
+                              sections[i].$1,
                               style: theme.textTheme.titleLarge,
                             ),
                           ),
@@ -144,7 +131,7 @@ class PrivacyPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        sections[i].$4,
+                        sections[i].$2,
                         style: theme.textTheme.bodyMedium?.copyWith(
                           fontSize: 14.5,
                           height: 1.95,
@@ -207,6 +194,30 @@ Future<void> _openPublished(BuildContext context) async {
   messenger.showSnackBar(SnackBar(content: Text(strings.couldNotOpen)));
 }
 
+/// Every section of the policy, in reading order.
+///
+/// One list, used by the page, by the plain-text copy and by the tests, so a
+/// section can never be added in one place and forgotten in another.
+List<(String, String)> privacySections(Strings strings) => [
+  (strings.privacyHeading1, strings.privacyBody1),
+  (strings.privacyHeading2, strings.privacyBody2),
+  (strings.privacyHeading3, strings.privacyBody3),
+  (strings.privacyHeading4, strings.privacyBody4),
+  (strings.privacyHeading5, strings.privacyBody5),
+  (
+    strings.privacyHeading6,
+    strings.privacyBody6(
+      strings.appName,
+      Developer.packageId,
+      Developer.name,
+      Developer.email,
+    ),
+  ),
+  (strings.privacyHeading7, strings.privacyBody7),
+  (strings.privacyHeading8, strings.privacyBody8),
+  (strings.privacyHeading9, strings.privacyBody9),
+];
+
 /// The same policy as plain text, for `docs/privacy-policy.md` and for anyone
 /// who needs to paste it into a store listing.
 String privacyPolicyAsText(Strings strings) {
@@ -214,13 +225,7 @@ String privacyPolicyAsText(Strings strings) {
     ..writeln(strings.privacy)
     ..writeln('${strings.privacyUpdated}: ${PrivacyPage.lastUpdated}')
     ..writeln();
-  for (final (heading, body) in [
-    (strings.privacyHeading1, strings.privacyBody1),
-    (strings.privacyHeading2, strings.privacyBody2),
-    (strings.privacyHeading3, strings.privacyBody3),
-    (strings.privacyHeading4, strings.privacyBody4),
-    (strings.privacyHeading5, strings.privacyBody5),
-  ]) {
+  for (final (heading, body) in privacySections(strings)) {
     buffer
       ..writeln(heading)
       ..writeln(body)

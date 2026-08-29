@@ -39,7 +39,7 @@ class _SplashPageState extends State<SplashPage>
   /// without four separate tickers.
   late final AnimationController _in = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 1600),
+    duration: const Duration(milliseconds: 2000),
   );
 
   bool _started = false;
@@ -161,13 +161,15 @@ class _Mark extends StatelessWidget {
   Widget build(BuildContext context) {
     final settle = CurvedAnimation(
       parent: controller,
-      curve: const Interval(0, 0.55, curve: Curves.easeOutBack),
+      // easeOutCubic rather than easeOutBack: no overshoot, so the mark
+      // settles instead of bouncing.
+      curve: const Interval(0, 0.6, curve: Curves.easeOutCubic),
     );
 
     return AnimatedBuilder(
       animation: settle,
       builder: (context, child) =>
-          Transform.scale(scale: 0.82 + 0.18 * settle.value, child: child),
+          Transform.scale(scale: 0.90 + 0.10 * settle.value, child: child),
       child: const AppMark(size: 148, progress: true),
     );
   }

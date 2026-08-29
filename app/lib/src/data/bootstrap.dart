@@ -10,8 +10,9 @@ import 'package:path_provider/path_provider.dart';
 
 import 'arabic.dart';
 import 'corpus.dart';
+import 'vault.dart';
 
-const String kCorpusAsset = 'assets/db/qamus.corpus.xz';
+const String kCorpusAsset = 'assets/db/qamus.corpus.sealed';
 const String kDbFileName = 'qamus.db';
 
 enum BootstrapStage { idle, unpacking, writing, indexing, ready, failed }
@@ -129,9 +130,11 @@ void _worker(_Job job) {
   final send = job.sendPort;
   try {
     send.send(const BootstrapProgress(BootstrapStage.unpacking, -1));
-    final container = Uint8List.fromList(
-      XZDecoder().decodeBytes(job.compressed),
-    );
+    // Unseal, then inflate. Both run here, in the worker isolate, so neither
+    // the key derivation nor the decompression touches the frame the splash
+    // screen is drawing.
+    final archive = CorpusVault.open(job.compressed, corpusPassphrase());
+    final container = Uint8List.fromList(XZDecoder().decodeBytes(archive));
 
     buildDatabase(container, job.targetPath, (fraction, stage) {
       send.send(

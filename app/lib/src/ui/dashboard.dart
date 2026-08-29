@@ -25,8 +25,12 @@ class Dashboard extends StatelessWidget {
     final settings = scope.settings;
     final scheme = Theme.of(context).colorScheme;
 
-    // One word per day, the same for everyone, chosen without a scan.
-    final featured = scope.dictionary.wordOfDay(DateTime.now());
+    // One word per day, the same for everyone, chosen without a scan — and
+    // a strip of its neighbours in the same permutation, so the treasures
+    // are never the same two days running.
+    final today = DateTime.now();
+    final featured = scope.dictionary.wordOfDay(today);
+    final treasures = scope.dictionary.curiositiesFor(today);
 
     final history = settings.history;
     final favourites = settings.favourites;
@@ -133,20 +137,25 @@ class Dashboard extends StatelessWidget {
             ),
           ),
         ],
-        stagger(
-          SectionTitle(
-            strings.treasures,
-            icon: Icons.auto_awesome_rounded,
-            tint: QamusTheme.amber,
+        if (treasures.isNotEmpty)
+          stagger(
+            SectionTitle(
+              strings.treasures,
+              icon: Icons.auto_awesome_rounded,
+              tint: QamusTheme.amber,
+            ),
           ),
-        ),
         stagger(
           Wrap(
             spacing: 8,
             runSpacing: 8,
             children: [
-              for (final word in kSampler)
-                WordPill(word: word, onTap: () => onSearch(word)),
+              for (final word in treasures)
+                WordPill(
+                  word: word.word,
+                  subtitle: scope.dictionary.book(word.bookId)?.name,
+                  onTap: () => onOpen(word.key),
+                ),
             ],
           ),
         ),
@@ -179,19 +188,6 @@ class Dashboard extends StatelessWidget {
     );
   }
 }
-
-const kSampler = [
-  'سَلْسَبِيل',
-  'غَيْهَب',
-  'أُفُق',
-  'إِزْمِيل',
-  'رَصِين',
-  'تَبَتُّل',
-  'خَنْدَرِيس',
-  'يَنْبُوع',
-  'أَصِيل',
-  'دَيْجُور',
-];
 
 /// The hero card: one word, its root, and the first line of its definition.
 class _FeaturedCard extends StatelessWidget {

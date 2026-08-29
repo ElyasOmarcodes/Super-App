@@ -5,6 +5,8 @@ import 'package:flutter/services.dart';
 
 import '../app.dart';
 import '../l10n/strings.dart';
+import '../theme.dart';
+import 'deep_search_page.dart';
 import 'favourites_page.dart';
 import 'home_page.dart';
 import 'recent_page.dart';
@@ -34,6 +36,13 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   /// double tap on the window's close button would otherwise stack two.
   bool _asking = false;
 
+  /// What the home tab currently has in its search box.
+  ///
+  /// The "search the definitions" button is built here rather than inside the
+  /// tab, so that it rides on the shell's own Scaffold — above the navigation
+  /// curtain instead of dimmed underneath it.
+  final _query = ValueNotifier<String>('');
+
   @override
   void initState() {
     super.initState();
@@ -43,6 +52,7 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _query.dispose();
     super.dispose();
   }
 
@@ -102,7 +112,10 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
           IndexedStack(
             index: _index,
             children: [
-              HomePage(onOpenMenu: () => _scaffold.currentState?.openDrawer()),
+              HomePage(
+                onOpenMenu: () => _scaffold.currentState?.openDrawer(),
+                liveQuery: _query,
+              ),
               const FavouritesPage(),
               const RecentPage(),
               const SettingsPage(),
@@ -119,6 +132,33 @@ class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
             child: IgnorePointer(child: NavigationScrim()),
           ),
         ],
+      ),
+      // Scaffold paints its floating button above both the body and the
+      // navigation bar, which is exactly where this one belongs.
+      floatingActionButton: ValueListenableBuilder<String>(
+        valueListenable: _query,
+        builder: (context, query, _) => AnimatedSlide(
+          offset: _index == 0 && query.isNotEmpty
+              ? Offset.zero
+              : const Offset(0, 2.4),
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeOutCubic,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: navigationBarHeight(context) - 8),
+            child: FloatingActionButton.extended(
+              heroTag: 'deep-search',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => DeepSearchPage(initialQuery: query),
+                ),
+              ),
+              backgroundColor: QamusTheme.emerald,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.travel_explore_rounded),
+              label: Text(strings.deepSearch),
+            ),
+          ),
+        ),
       ),
       bottomNavigationBar: SoftNavigationBar(
         index: _index,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../app.dart';
 import '../../theme.dart';
+import '../widgets/developer_avatar.dart';
 import '../widgets/motion.dart';
 
 /// Three cards introducing what the app is for, each with its own painted
@@ -62,6 +63,13 @@ class _IntroPagesState extends State<IntroPages> {
         icon: Icons.hub_rounded,
         colour: QamusTheme.rose,
         emblem: _Emblem.branches,
+      ),
+      (
+        title: strings.introTitle4,
+        body: strings.introBody4,
+        icon: Icons.person_rounded,
+        colour: QamusTheme.violet,
+        emblem: _Emblem.portrait,
       ),
     ];
 
@@ -194,10 +202,16 @@ class _IntroCard extends StatelessWidget {
               child: SizedBox(
                 width: 210,
                 height: 210,
-                child: CustomPaint(
-                  painter: _EmblemPainter(emblem: emblem, colour: colour),
-                  child: Center(child: Icon(icon, size: 56, color: colour)),
-                ),
+                child: emblem == _Emblem.portrait
+                    // The author's own page wears this ring; the intro card
+                    // borrows the identical widget rather than a copy of it.
+                    ? const Center(child: DeveloperAvatar(size: 186))
+                    : CustomPaint(
+                        painter: _EmblemPainter(emblem: emblem, colour: colour),
+                        child: Center(
+                          child: Icon(icon, size: 56, color: colour),
+                        ),
+                      ),
               ),
             ),
           ),
@@ -232,7 +246,7 @@ class _IntroCard extends StatelessWidget {
   }
 }
 
-enum _Emblem { shelf, lens, branches }
+enum _Emblem { shelf, lens, branches, portrait }
 
 /// A geometric backdrop per intro page, drawn rather than shipped as an image.
 class _EmblemPainter extends CustomPainter {
@@ -259,6 +273,10 @@ class _EmblemPainter extends CustomPainter {
       ..color = colour.withValues(alpha: 0.42);
 
     switch (emblem) {
+      // The portrait card draws no emblem — the ring around the photograph
+      // is its emblem.
+      case _Emblem.portrait:
+        return;
       case _Emblem.shelf:
         // Six concentric arcs — one per lexicon.
         for (var i = 0; i < 6; i++) {

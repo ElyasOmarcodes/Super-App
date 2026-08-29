@@ -43,3 +43,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+# The plaintext archive is an intermediate: tools/seal_corpus.py turns it
+# into the sealed asset that actually ships.
+assets/db/qamus.corpus.xz

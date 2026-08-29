@@ -21,8 +21,11 @@ class AppMark extends StatefulWidget {
 
   final double size;
 
-  /// Turns the scalloped ring, the way a phone turns its indicator while an
-  /// app is being installed. Only the splash asks for it.
+  /// Turns a little faster, for the splash, where the mark is standing in for
+  /// a loading indicator rather than sitting as an ornament.
+  ///
+  /// Everywhere else the shape still turns — the drawer header, the language
+  /// picker — but slowly enough to read as breathing rather than spinning.
   final bool progress;
 
   final Color accent;
@@ -34,7 +37,10 @@ class AppMark extends StatefulWidget {
 class _AppMarkState extends State<AppMark> with SingleTickerProviderStateMixin {
   late final AnimationController _turn = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 5200),
+    // Softly. A full turn takes nine seconds on the splash and twenty-two
+    // anywhere else — slow enough that the eye reads it as alive rather than
+    // as something waiting to finish.
+    duration: Duration(milliseconds: widget.progress ? 9000 : 22000),
   );
 
   @override
@@ -53,7 +59,7 @@ class _AppMarkState extends State<AppMark> with SingleTickerProviderStateMixin {
   /// can ever settle, so it stops whenever motion is reduced — and freezes at
   /// the angle the launcher icon is drawn at.
   void _sync() {
-    final animate = widget.progress && !MediaQuery.disableAnimationsOf(context);
+    final animate = !MediaQuery.disableAnimationsOf(context);
     if (animate && !_turn.isAnimating) {
       _turn.repeat();
     } else if (!animate && _turn.isAnimating) {
@@ -134,7 +140,7 @@ class _MarkPainter extends CustomPainter {
     final angle = turn * 2 * math.pi;
     // The lobes breathe as they turn, which is what keeps the shape alive
     // rather than merely spinning.
-    final swell = _swell * (0.82 + 0.18 * math.sin(angle * 3));
+    final swell = _swell * (0.88 + 0.12 * math.sin(angle * 3));
     final path = scallopedPath(
       centre: centre,
       radius: radius * 0.66,

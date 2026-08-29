@@ -83,7 +83,7 @@ class _QamusAppState extends State<QamusApp> {
   void initState() {
     super.initState();
     _start();
-    Future<void>.delayed(const Duration(milliseconds: 1750), () {
+    Future<void>.delayed(const Duration(milliseconds: 2100), () {
       if (mounted) setState(() => _splashSettled = true);
     });
   }

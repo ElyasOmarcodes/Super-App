@@ -22,6 +22,9 @@ class Developer {
 
   static Uri get mail => Uri(scheme: 'mailto', path: email);
 
+  /// The identifier the app ships under, on every store and every platform.
+  static const packageId = 'com.elyasomar.arabic.qamus';
+
   /// Where the policy is published. Google Play needs a public URL, and the
   /// page inside the app links out to the very same document — the source of
   /// which is `docs/privacy-policy.html` in this repository.
@@ -34,4 +37,4 @@ class Developer {
 ///
 /// Kept in step with `pubspec.yaml` by hand: reading it at runtime would mean
 /// another plugin for a string that changes once a release.
-const String kAppVersion = '1.2.0';
+const String kAppVersion = '1.3.0';

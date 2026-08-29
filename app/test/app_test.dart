@@ -2,6 +2,7 @@
 library;
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:ui' show AppExitResponse;
 import 'dart:io';
 
@@ -12,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qamus/src/app.dart';
 import 'package:qamus/src/data/corpus.dart';
+import 'package:qamus/src/data/vault.dart';
 import 'package:qamus/src/data/dictionary.dart';
 import 'package:qamus/src/data/bootstrap.dart';
 import 'package:qamus/src/data/notifications.dart';
@@ -22,9 +24,11 @@ import 'package:qamus/src/l10n/strings.dart';
 import 'package:qamus/src/theme.dart';
 import 'package:qamus/src/ui/developer_page.dart';
 import 'package:qamus/src/ui/entry_page.dart';
+import 'package:qamus/src/ui/deep_search_page.dart';
 import 'package:qamus/src/ui/guide_page.dart';
 import 'package:qamus/src/ui/home_page.dart';
 import 'package:qamus/src/ui/library_page.dart';
+import 'package:qamus/src/ui/onboarding/intro_pages.dart';
 import 'package:qamus/src/ui/onboarding/onboarding_flow.dart';
 import 'package:qamus/src/ui/privacy_page.dart';
 import 'package:qamus/src/ui/widgets/app_drawer.dart';
@@ -33,6 +37,7 @@ import 'package:qamus/src/ui/settings_page.dart';
 import 'package:qamus/src/ui/shell.dart';
 import 'package:qamus/src/ui/splash_page.dart';
 import 'package:qamus/src/ui/widgets/app_mark.dart';
+import 'package:qamus/src/ui/widgets/developer_avatar.dart';
 import 'package:qamus/src/ui/widgets/common.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -50,8 +55,14 @@ void main() {
     final target = '${workspace.path}/qamus.db';
     buildDatabase(
       Uint8List.fromList(
+        // The tests open the shipped asset the same way the app does:
+        // unseal, then inflate. If the seal ever stopped matching the key in
+        // the binary, every one of these would fail at setUpAll.
         XZDecoder().decodeBytes(
-          File('assets/db/qamus.corpus.xz').readAsBytesSync(),
+          CorpusVault.open(
+            File('assets/db/qamus.corpus.sealed').readAsBytesSync(),
+            corpusPassphrase(),
+          ),
         ),
       ),
       target,
@@ -877,19 +888,21 @@ void main() {
       await pumpApp(
         tester,
         home: const PrivacyPage(),
-        size: const Size(420, 3200),
+        size: const Size(420, 7000),
       );
       const strings = Strings(AppLocale.ar);
 
-      for (final heading in [
-        strings.privacyHeading1,
-        strings.privacyHeading2,
-        strings.privacyHeading3,
-        strings.privacyHeading4,
-        strings.privacyHeading5,
-      ]) {
+      // Every section, including the four Google Play requires.
+      for (final (heading, _) in privacySections(strings)) {
         expect(find.text(heading), findsOneWidget, reason: heading);
       }
+      expect(privacySections(strings).length, 9);
+      expect(find.text(Developer.packageId), findsNothing);
+      expect(
+        find.textContaining(Developer.packageId, findRichText: true),
+        findsWidgets,
+        reason: 'the listing has to name the application id',
+      );
       expect(find.textContaining(PrivacyPage.lastUpdated), findsOneWidget);
       expect(find.text(Developer.email), findsOneWidget);
     });
@@ -923,15 +936,10 @@ void main() {
       // say what the app says — in English, section for section.
       final page = File('../docs/privacy-policy.html').readAsStringSync();
       const english = Strings(AppLocale.en);
-      for (final heading in [
-        english.privacyHeading1,
-        english.privacyHeading2,
-        english.privacyHeading3,
-        english.privacyHeading4,
-        english.privacyHeading5,
-      ]) {
+      for (final (heading, _) in privacySections(english)) {
         expect(page, contains(heading), reason: heading);
       }
+      expect(page, contains(Developer.packageId));
       expect(page, contains(PrivacyPage.lastUpdated));
       expect(page, contains(Developer.email));
     });
@@ -1116,6 +1124,215 @@ void main() {
     });
   });
 
+  group('the sealed corpus', () {
+    testWidgets('the shipped asset is not a readable archive', (_) async {
+      final sealed = File('assets/db/qamus.corpus.sealed').readAsBytesSync();
+
+      // Anyone who lifts the file out of the package finds this, not an xz.
+      expect(String.fromCharCodes(sealed.take(5)), 'QVLT1');
+
+      // And nowhere in the file do the six bytes that mark an xz stream
+      // appear together — the body is indistinguishable from noise.
+      const xz = [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00];
+      var runs = 0;
+      for (var i = 0; i + xz.length <= sealed.length; i++) {
+        var same = true;
+        for (var j = 0; j < xz.length && same; j++) {
+          same = sealed[i + j] == xz[j];
+        }
+        if (same) runs++;
+      }
+      expect(runs, 0, reason: 'no xz header survives the seal');
+    });
+
+    testWidgets('the right passphrase opens it, a wrong one does not', (
+      _,
+    ) async {
+      final sealed = File('assets/db/qamus.corpus.sealed').readAsBytesSync();
+
+      final archive = CorpusVault.open(sealed, corpusPassphrase());
+      expect(archive.take(6).toList(), const [
+        0xFD,
+        0x37,
+        0x7A,
+        0x58,
+        0x5A,
+        0x00,
+      ], reason: 'what comes out is an xz stream');
+
+      expect(
+        () => CorpusVault.open(sealed, utf8.encode('not the passphrase')),
+        throwsStateError,
+      );
+    });
+
+    testWidgets('a single altered byte is refused', (_) async {
+      final sealed = File('assets/db/qamus.corpus.sealed').readAsBytesSync();
+      final tampered = Uint8List.fromList(sealed);
+      // Somewhere deep in the body, far past the header.
+      tampered[tampered.length ~/ 2] ^= 0x01;
+
+      expect(
+        () => CorpusVault.open(tampered, corpusPassphrase()),
+        throwsStateError,
+        reason: 'the tag is checked before anything is decrypted',
+      );
+    });
+
+    testWidgets('a bare file is rejected as the wrong shape', (_) async {
+      expect(
+        () => CorpusVault.open(Uint8List(8), corpusPassphrase()),
+        throwsFormatException,
+      );
+    });
+
+    testWidgets('the passphrase is never a literal in the binary', (_) async {
+      // Assembled from a masked table; the constant in the source is not the
+      // passphrase, so `strings` over the build does not print it.
+      final source = File('lib/src/data/vault.dart').readAsStringSync();
+      expect(source, isNot(contains('ElyasOmar=DB')));
+      expect(debugPassphraseText().length, 12);
+    });
+  });
+
+  group('the word of the day', () {
+    testWidgets('is drawn from the corpus oddities', (_) async {
+      expect(
+        dictionary.curiosityCount,
+        greaterThan(1000),
+        reason: 'the rare-word pool has to be deep enough not to repeat',
+      );
+
+      final word = dictionary.wordOfDay(DateTime(2026, 8, 29));
+      expect(word, isNotNull);
+      expect(word!.preview.trim(), isNotEmpty);
+      // Rare means: recorded by exactly one of the six lexicons.
+      expect(word.word.trim(), isNotEmpty);
+    });
+
+    testWidgets('never repeats — every day for six years is a new word', (
+      _,
+    ) async {
+      final seen = <String>{};
+      var day = DateTime(2026, 1, 1);
+      for (var i = 0; i < 2200; i++) {
+        final word = dictionary.wordOfDay(day);
+        expect(word, isNotNull, reason: '$day');
+        expect(
+          seen.add(word!.key),
+          isTrue,
+          reason: '$day repeated "${word.key}" after ${seen.length} days',
+        );
+        day = day.add(const Duration(days: 1));
+      }
+    });
+
+    testWidgets('the treasures strip changes daily and never echoes the card', (
+      _,
+    ) async {
+      final today = DateTime(2026, 8, 29);
+      final card = dictionary.wordOfDay(today)!;
+      final strip = dictionary.curiositiesFor(today);
+
+      expect(strip, hasLength(8));
+      expect(strip.map((f) => f.key), isNot(contains(card.key)));
+      expect(strip.map((f) => f.key).toSet(), hasLength(strip.length));
+
+      final tomorrow = dictionary.curiositiesFor(
+        today.add(const Duration(days: 1)),
+      );
+      expect(
+        tomorrow.map((f) => f.key),
+        isNot(equals(strip.map((f) => f.key))),
+      );
+    });
+  });
+
+  group('searching the definitions', () {
+    testWidgets('the button rides above the navigation curtain', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      const strings = Strings(AppLocale.ar);
+
+      // Parked off the bottom of the screen until there is a query.
+      Offset slide() => tester
+          .widget<AnimatedSlide>(
+            find.ancestor(
+              of: find.byType(FloatingActionButton),
+              matching: find.byType(AnimatedSlide),
+            ),
+          )
+          .offset;
+      expect(slide().dy, greaterThan(1));
+
+      await tester.enterText(find.byType(TextField).first, 'كتب');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      final fab = find.widgetWithText(FloatingActionButton, strings.deepSearch);
+      expect(fab, findsOneWidget);
+      expect(slide(), Offset.zero, reason: 'and slid into view once there is');
+
+      // The curtain dims whatever is drawn inside a tab, so this button is
+      // built by the shell instead — which puts it above both.
+      expect(
+        find.ancestor(of: fab, matching: find.byType(NavigationScrim)),
+        findsNothing,
+      );
+      expect(
+        find.ancestor(of: fab, matching: find.byType(IndexedStack)),
+        findsNothing,
+      );
+    });
+
+    testWidgets('it opens the definition search with what was typed', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await tester.enterText(find.byType(TextField).first, 'كتب');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+      expect(find.byType(DeepSearchPage), findsOneWidget);
+    });
+  });
+
+  group('the introduction', () {
+    testWidgets('ends on the author, with the same portrait as his page', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const IntroPages(onDone: _nothing),
+        size: const Size(420, 1400),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      // Four cards now, and the fourth is his.
+      for (var i = 0; i < 3; i++) {
+        await tester.tap(find.text(strings.next));
+        await tester.pumpAndSettle();
+      }
+      expect(find.text(strings.introTitle4), findsOneWidget);
+      expect(find.textContaining('الیاس عمر'), findsWidgets);
+      expect(find.byType(DeveloperAvatar), findsOneWidget);
+    });
+
+    testWidgets('the portrait is one widget, not two lookalikes', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const DeveloperPage(),
+        size: const Size(420, 2600),
+      );
+      expect(find.byType(DeveloperAvatar), findsOneWidget);
+    });
+  });
+
   group('onboarding', () {
     testWidgets('a first launch asks for a language before anything else', (
       tester,
@@ -1220,3 +1437,5 @@ Finder _switchTitled(String label) => find.byWidgetPredicate(
       widget.title is Text &&
       (widget.title! as Text).data == label,
 );
+
+void _nothing() {}
