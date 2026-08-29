@@ -2,16 +2,19 @@
 library;
 
 import 'dart:async';
+import 'dart:ui' show AppExitResponse;
 import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qamus/src/app.dart';
 import 'package:qamus/src/data/corpus.dart';
 import 'package:qamus/src/data/dictionary.dart';
 import 'package:qamus/src/data/bootstrap.dart';
+import 'package:qamus/src/data/notifications.dart';
 import 'package:qamus/src/data/settings.dart';
 import 'package:qamus/src/developer.dart';
 import 'package:qamus/src/l10n/locales.dart';
@@ -23,10 +26,13 @@ import 'package:qamus/src/ui/guide_page.dart';
 import 'package:qamus/src/ui/home_page.dart';
 import 'package:qamus/src/ui/library_page.dart';
 import 'package:qamus/src/ui/onboarding/onboarding_flow.dart';
+import 'package:qamus/src/ui/privacy_page.dart';
+import 'package:qamus/src/ui/widgets/app_drawer.dart';
 import 'package:qamus/src/ui/roots_page.dart';
 import 'package:qamus/src/ui/settings_page.dart';
 import 'package:qamus/src/ui/shell.dart';
 import 'package:qamus/src/ui/splash_page.dart';
+import 'package:qamus/src/ui/widgets/app_mark.dart';
 import 'package:qamus/src/ui/widgets/common.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -64,6 +70,7 @@ void main() {
     Widget home = const AppShell(),
     Map<String, Object> prefs = const {},
     Size? size,
+    WordNotifications? notifications,
   }) async {
     // A lazy list only builds what fits the *render surface*; MediaQuery data
     // alone does not resize it. Long pages therefore ask for a tall one.
@@ -77,6 +84,7 @@ void main() {
       Qamus(
         dictionary: dictionary,
         settings: settings,
+        notifications: notifications,
         child: Builder(
           builder: (context) => MaterialApp(
             theme: QamusTheme.light(),
@@ -410,6 +418,34 @@ void main() {
           s.guideSettingsBody,
           s.guideLanguageBody,
           s.guideOfflineBody,
+          s.dailyWord,
+          s.dailyWordDetail,
+          s.dailyWordAsk,
+          s.dailyWordAskDetail,
+          s.allowNotifications,
+          s.notNow,
+          s.notificationTime,
+          s.notificationsBlocked,
+          s.notificationsUnavailable,
+          s.hourLabel(8),
+          s.exitTitle,
+          s.exitDetail,
+          s.exitConfirm,
+          s.stay,
+          s.privacy,
+          s.privacyDetail,
+          s.privacyUpdated,
+          s.privacyHeading1,
+          s.privacyBody1,
+          s.privacyHeading2,
+          s.privacyBody2,
+          s.privacyHeading3,
+          s.privacyBody3,
+          s.privacyHeading4,
+          s.privacyBody4,
+          s.privacyHeading5,
+          s.privacyBody5,
+          s.privacyContact,
         ];
         for (final value in values) {
           expect(
@@ -730,6 +766,313 @@ void main() {
     });
   });
 
+  group('leaving the app', () {
+    testWidgets('back on the home tab asks before closing', (tester) async {
+      await pumpApp(tester);
+      const strings = Strings(AppLocale.ar);
+
+      // The system back gesture, as the framework delivers it.
+      final popped = await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      expect(popped, isTrue, reason: 'the shell handled the pop itself');
+      expect(find.text(strings.exitTitle), findsOneWidget);
+      expect(find.text(strings.exitDetail), findsOneWidget);
+      expect(find.text(strings.stay), findsOneWidget);
+      expect(find.text(strings.exitConfirm), findsOneWidget);
+    });
+
+    testWidgets('staying dismisses the dialog and keeps the app', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      const strings = Strings(AppLocale.ar);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.stay));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.exitTitle), findsNothing);
+      expect(find.byType(HomePage), findsOneWidget);
+    });
+
+    testWidgets('the desktop window close button asks too', (tester) async {
+      await pumpApp(tester);
+      const strings = Strings(AppLocale.ar);
+
+      // What a window manager sends when the X is clicked.
+      final response = tester.binding.handleRequestAppExit();
+      await tester.pumpAndSettle();
+      expect(find.text(strings.exitTitle), findsOneWidget);
+
+      await tester.tap(find.text(strings.stay));
+      await tester.pumpAndSettle();
+      expect(await response, AppExitResponse.cancel);
+    });
+
+    testWidgets('back from another tab returns home rather than asking', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      const strings = Strings(AppLocale.ar);
+
+      await tester.tap(find.text(strings.navSettings));
+      await tester.pumpAndSettle();
+      expect(find.byType(SettingsPage), findsOneWidget);
+
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+
+      // No question: the reader asked to go back, not to leave.
+      expect(find.text(strings.exitTitle), findsNothing);
+      expect(
+        tester.widget<IndexedStack>(find.byType(IndexedStack).first).index,
+        0,
+      );
+    });
+  });
+
+  group('the sidebar', () {
+    testWidgets('lists the sources below every option', (tester) async {
+      await pumpApp(tester, size: const Size(420, 2400));
+      const strings = Strings(AppLocale.ar);
+
+      await tester.tap(find.byIcon(Icons.menu_rounded));
+      await tester.pumpAndSettle();
+
+      // The other tabs are alive behind the drawer, so every finder is
+      // scoped to the drawer itself.
+      Finder inDrawer(String label) => find.descendant(
+        of: find.byType(AppDrawer),
+        matching: find.text(label),
+      );
+      double topOf(Finder finder) => tester.getTopLeft(finder).dy;
+
+      final sources = topOf(inDrawer(strings.sources));
+      for (final option in [
+        strings.browseRoots,
+        strings.deepSearch,
+        strings.guide,
+        strings.aboutProgram,
+        strings.aboutDeveloper,
+        strings.howItWorks,
+        strings.privacy,
+        strings.licenses,
+      ]) {
+        expect(
+          topOf(inDrawer(option).first),
+          lessThan(sources),
+          reason: '"\$option" should sit above the sources',
+        );
+      }
+    });
+  });
+
+  group('the privacy policy', () {
+    testWidgets('answers the questions a store listing has to answer', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const PrivacyPage(),
+        size: const Size(420, 3200),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      for (final heading in [
+        strings.privacyHeading1,
+        strings.privacyHeading2,
+        strings.privacyHeading3,
+        strings.privacyHeading4,
+        strings.privacyHeading5,
+      ]) {
+        expect(find.text(heading), findsOneWidget, reason: heading);
+      }
+      expect(find.textContaining(PrivacyPage.lastUpdated), findsOneWidget);
+      expect(find.text(Developer.email), findsOneWidget);
+    });
+
+    testWidgets('reads the same in every language', (tester) async {
+      for (final locale in AppLocale.values) {
+        final text = privacyPolicyAsText(Strings(locale));
+        expect(text.trim(), isNotEmpty, reason: locale.code);
+        expect(text, contains(Developer.email), reason: locale.code);
+      }
+    });
+
+    testWidgets('the hosted copy says the same thing as the app', (_) async {
+      // Google Play reads docs/privacy-policy.md at a public URL while the
+      // reader reads the page inside the app. They have to agree.
+      final hosted = File('../docs/privacy-policy.md').readAsStringSync();
+      expect(hosted, contains(PrivacyPage.lastUpdated));
+      expect(hosted, contains(Developer.email));
+      for (final locale in AppLocale.values) {
+        final s = Strings(locale);
+        for (final heading in [
+          s.privacyHeading1,
+          s.privacyHeading2,
+          s.privacyHeading3,
+          s.privacyHeading4,
+          s.privacyHeading5,
+        ]) {
+          expect(
+            hosted,
+            contains(heading),
+            reason: '\${locale.code}: \$heading',
+          );
+        }
+      }
+    });
+  });
+
+  group('the word of the day', () {
+    testWidgets('is the same word all day, and a different one tomorrow', (
+      _,
+    ) async {
+      final morning = dictionary.wordOfDay(DateTime(2026, 8, 29, 6));
+      final evening = dictionary.wordOfDay(DateTime(2026, 8, 29, 23));
+      final tomorrow = dictionary.wordOfDay(DateTime(2026, 8, 30, 6));
+
+      expect(morning, isNotNull);
+      expect(morning!.key, evening!.key);
+      expect(morning.key, isNot(tomorrow!.key));
+      expect(morning.word.trim(), isNotEmpty);
+    });
+
+    testWidgets('the settings switch is off until it is asked for', (
+      tester,
+    ) async {
+      final settings = await pumpApp(
+        tester,
+        home: const SettingsPage(),
+        size: const Size(420, 2400),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      expect(settings.dailyWord, isFalse);
+      expect(find.text(strings.dailyWord), findsWidgets);
+
+      final daily = _switchTitled(strings.dailyWord);
+      expect(daily, findsOneWidget);
+      expect(tester.widget<SwitchListTile>(daily).value, isFalse);
+    });
+
+    testWidgets('a platform that cannot schedule says so plainly', (
+      tester,
+    ) async {
+      // Linux can post a notification but cannot schedule one, so the switch
+      // is disabled rather than left on promising a word that never comes.
+      await pumpApp(
+        tester,
+        home: const SettingsPage(),
+        size: const Size(420, 2400),
+        notifications: WordNotifications.disabled(available: false),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      final daily = _switchTitled(strings.dailyWord);
+      expect(tester.widget<SwitchListTile>(daily).onChanged, isNull);
+      expect(find.text(strings.notificationsUnavailable), findsOneWidget);
+    });
+
+    testWidgets('a refused permission leaves the switch off', (tester) async {
+      // The scope's default service refuses everything, which is exactly what
+      // a reader who declines the system dialog produces.
+      final settings = await pumpApp(
+        tester,
+        home: const SettingsPage(),
+        size: const Size(420, 2400),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      await tester.tap(_switchTitled(strings.dailyWord));
+      await tester.pumpAndSettle();
+
+      expect(settings.dailyWord, isFalse);
+      expect(find.text(strings.notificationsBlocked), findsOneWidget);
+    });
+
+    testWidgets('onboarding asks for consent after the intro, not before', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: const OnboardingFlow(),
+        prefs: {'locale': 'ar'},
+        size: const Size(420, 1400),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      // Straight into the intro, because the language is already chosen.
+      expect(find.text(strings.introTitle1), findsOneWidget);
+      expect(find.text(strings.dailyWordAsk), findsNothing);
+
+      await tester.tap(find.text(strings.skip));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.dailyWordAsk), findsOneWidget);
+      expect(find.text(strings.allowNotifications), findsOneWidget);
+      expect(find.text(strings.notNow), findsOneWidget);
+    });
+
+    testWidgets('"not now" still lets the reader in', (tester) async {
+      final settings = await pumpApp(
+        tester,
+        home: const OnboardingFlow(),
+        prefs: {'locale': 'ar'},
+        size: const Size(420, 1400),
+      );
+      const strings = Strings(AppLocale.ar);
+
+      await tester.tap(find.text(strings.skip));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.notNow));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AppShell), findsOneWidget);
+      expect(settings.onboarded, isTrue);
+      expect(settings.dailyWord, isFalse);
+    });
+  });
+
+  group('the mark', () {
+    testWidgets('the splash turns the launcher icon into a progress ring', (
+      tester,
+    ) async {
+      await pumpApp(
+        tester,
+        home: SplashPage(
+          progress: const Stream<BootstrapProgress>.empty(),
+          onRetry: () {},
+        ),
+      );
+
+      expect(find.byType(AppMark), findsOneWidget);
+      expect(tester.widget<AppMark>(find.byType(AppMark)).progress, isTrue);
+      final ring = tester.widget<CircularProgressIndicator>(
+        find.byType(CircularProgressIndicator),
+      );
+      // Reduced motion is on in these tests, so the arc holds still rather
+      // than spinning forever — the same picture the icon shows.
+      expect(ring.value, isNotNull);
+    });
+
+    testWidgets('the sidebar and the language picker wear the same mark', (
+      tester,
+    ) async {
+      await pumpApp(tester);
+      await tester.tap(find.byIcon(Icons.menu_rounded));
+      await tester.pumpAndSettle();
+      expect(find.byType(AppMark), findsOneWidget);
+
+      await pumpApp(tester, home: const OnboardingFlow());
+      expect(find.byType(AppMark), findsOneWidget);
+      // No ring anywhere but the splash: nothing is loading here.
+      expect(tester.widget<AppMark>(find.byType(AppMark)).progress, isFalse);
+    });
+  });
+
   group('onboarding', () {
     testWidgets('a first launch asks for a language before anything else', (
       tester,
@@ -792,11 +1135,17 @@ void main() {
       const strings = Strings(AppLocale.ar);
       expect(settings.showVowels, isTrue);
 
-      await tester.scrollUntilVisible(find.byType(SwitchListTile), 240);
+      // Two switches live on this page now — the diacritics one is the one
+      // carrying that label.
+      final diacritics = find.ancestor(
+        of: find.text(strings.showVowels),
+        matching: find.byType(SwitchListTile),
+      );
+      await tester.scrollUntilVisible(diacritics, 240);
       await tester.pumpAndSettle();
       expect(find.text(strings.sampleVowelled), findsOneWidget);
 
-      await tester.tap(find.byType(SwitchListTile));
+      await tester.tap(diacritics);
       await tester.pumpAndSettle();
       expect(settings.showVowels, isFalse);
       expect(find.text(strings.sampleBare), findsOneWidget);
@@ -817,3 +1166,14 @@ void main() {
     });
   });
 }
+
+/// The one switch on the settings page whose title reads [label].
+///
+/// The group heading above it carries the same words, so matching on text
+/// alone finds two things and taps neither.
+Finder _switchTitled(String label) => find.byWidgetPredicate(
+  (widget) =>
+      widget is SwitchListTile &&
+      widget.title is Text &&
+      (widget.title! as Text).data == label,
+);

@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'data/bootstrap.dart';
 import 'data/dictionary.dart';
+import 'data/notifications.dart';
 import 'data/settings.dart';
 import 'l10n/locales.dart';
 import 'l10n/strings.dart';
@@ -11,18 +14,25 @@ import 'theme.dart';
 import 'ui/onboarding/onboarding_flow.dart';
 import 'ui/shell.dart';
 import 'ui/splash_page.dart';
+import 'ui/widgets/exit_dialog.dart';
 
 /// Hands the opened dictionary, the user's settings and the active
 /// translations down the tree without pulling in a state-management package.
 class Qamus extends InheritedNotifier<Settings> {
-  const Qamus({
+  Qamus({
     super.key,
     required this.dictionary,
     required Settings settings,
     required super.child,
-  }) : super(notifier: settings);
+    WordNotifications? notifications,
+  }) : notifications = notifications ?? WordNotifications.disabled(),
+       super(notifier: settings);
 
   final Dictionary dictionary;
+
+  /// Delivers the word of the day. Defaults to a service that does nothing,
+  /// so a widget test never reaches for a platform channel that is not there.
+  final WordNotifications notifications;
 
   Settings get settings => notifier!;
 
@@ -58,6 +68,8 @@ class _QamusAppState extends State<QamusApp> {
   final _bootstrap = DatabaseBootstrap();
   final _navigator = GlobalKey<NavigatorState>();
 
+  final _notifications = WordNotifications();
+
   Dictionary? _dictionary;
   Settings? _settings;
   Object? _error;
@@ -87,9 +99,28 @@ class _QamusAppState extends State<QamusApp> {
         _settings = settings;
         _error = null;
       });
+      // Rebuilt on every launch: each day needs its own word, and a queue the
+      // system dropped repairs itself here rather than staying silent.
+      unawaited(
+        _notifications.reschedule(dictionary: dictionary, settings: settings),
+      );
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error);
+    }
+  }
+
+  /// Guards the dialog against a second Escape while the first is open.
+  bool _leaving = false;
+
+  Future<void> _confirmAndLeave() async {
+    final context = _navigator.currentContext;
+    if (context == null || _leaving) return;
+    _leaving = true;
+    try {
+      if (await confirmExit(context)) await leaveApp();
+    } finally {
+      _leaving = false;
     }
   }
 
@@ -120,7 +151,15 @@ class _QamusAppState extends State<QamusApp> {
               bindings: {
                 const SingleActivator(LogicalKeyboardKey.escape): () {
                   final navigator = _navigator.currentState;
-                  if (navigator != null && navigator.canPop()) navigator.pop();
+                  if (navigator == null) return;
+                  if (navigator.canPop()) {
+                    navigator.pop();
+                  } else {
+                    // Nothing left to go back to, so Escape asks the same
+                    // question the window's close button asks. Desktop
+                    // readers reach for it long before the corner.
+                    unawaited(_confirmAndLeave());
+                  }
                 },
               },
               child: Focus(
@@ -169,6 +208,7 @@ class _QamusAppState extends State<QamusApp> {
     return Qamus(
       dictionary: dictionary,
       settings: settings,
+      notifications: _notifications,
       child: Builder(
         builder: (context) {
           final scope = Qamus.of(context);

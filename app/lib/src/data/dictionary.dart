@@ -330,6 +330,14 @@ class Dictionary {
   ///
   /// Picking by row id rather than `ORDER BY RANDOM()` keeps this an O(1)
   /// primary-key lookup instead of a full scan.
+  /// The word of the day for [day]: the same word for everyone, everywhere,
+  /// chosen without scanning the corpus.
+  ///
+  /// Shared by the dashboard card and the notification scheduler so the two
+  /// can never disagree about what today's word is.
+  Featured? wordOfDay(DateTime day) =>
+      featured((day.year * 10000 + day.month * 100 + day.day) * 7919);
+
   Featured? featured(int seed) {
     final total = entryCount;
     if (total == 0) return null;

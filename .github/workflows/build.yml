@@ -19,6 +19,8 @@ env:
   # install happily and then emits the 2019 generator, which CMake rejects.
   FLUTTER_VERSION: '3.47.2'
   XZ_OPT: '-9e --threads=0'
+  # Stamped into the Windows installer. Kept in step with app/pubspec.yaml.
+  APP_VERSION: '1.2.0'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -104,6 +106,13 @@ jobs:
           cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk out/
           cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk out/
           cp app/build/app/outputs/bundle/release/*.aab out/
+          # Both halves of the build rename their symbols, and both leave a
+          # map behind. Without these a crash report from a release build is
+          # unreadable — they ship beside the binaries, never inside them.
+          mkdir -p out/symbols
+          cp -r app/build/symbols/. out/symbols/ 2>/dev/null || true
+          find app/build/app/outputs/mapping -name 'mapping.txt' \
+            -exec cp {} out/symbols/android-r8-mapping.txt \; 2>/dev/null || true
           tar -C out -cf - . | xz -9e --threads=0 > qamus-android-other.tar.xz
           ls -lh out qamus-android-other.tar.xz
 
@@ -158,6 +167,41 @@ jobs:
           rm -f out/qamus/*.pdb
           tar -C out -cf - . | xz -9e --threads=0 > qamus-windows.tar.xz
           ls -lh qamus-windows.tar.xz
+
+      # One file that installs and runs on its own. Flutter's Windows output is
+      # an exe plus DLLs and a data/ tree, none of which works alone; Inno
+      # Setup (preinstalled on the runner) folds the lot into a single .exe.
+      - name: build the single-file installer
+        shell: pwsh
+        run: |
+          $release = "app/build/windows/x64/runner/Release"
+          if (-not (Test-Path "$release/qamus.exe")) {
+            throw "no runner bundle at $release"
+          }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found on this runner" }
+          $bundle = (Resolve-Path $release).Path
+          & $iscc /Qp "/DBundleDir=$bundle" "/DAppVersion=$env:APP_VERSION" `
+            "/O$((Resolve-Path .).Path)" app/windows/packaging/qamus.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+          Get-Item qamus-setup.exe | Format-List Name, Length
+
+      - name: compress the installer
+        shell: bash
+        run: |
+          xz -9e --threads=0 --keep --force qamus-setup.exe
+          ls -lh qamus-setup.exe.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-windows-exe
+          path: qamus-setup.exe.xz
+          compression-level: 0
+          if-no-files-found: error
 
       - uses: actions/upload-artifact@v4
         with:
@@ -224,5 +268,8 @@ jobs:
       - name: publish
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.tar.xz
+          files: |
+            artifacts/**/*.tar.xz
+            artifacts/**/*.apk.xz
+            artifacts/**/*.exe.xz
           generate_release_notes: true

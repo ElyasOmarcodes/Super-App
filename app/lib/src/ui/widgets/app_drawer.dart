@@ -7,7 +7,9 @@ import '../about_page.dart';
 import '../deep_search_page.dart';
 import '../developer_page.dart';
 import '../guide_page.dart';
+import '../privacy_page.dart';
 import '../roots_page.dart';
+import 'app_mark.dart';
 import 'motion.dart';
 
 /// The sidebar on the home screen: the ways into the lexicon that are not a
@@ -64,15 +66,6 @@ class AppDrawer extends StatelessWidget {
                       onTap: () => go(const DeepSearchPage()),
                     ),
                   ),
-                  stagger(_Section(strings.sources)),
-                  for (final book in scope.dictionary.books)
-                    stagger(
-                      _BookRow(
-                        name: book.name,
-                        count: strings.n(book.count),
-                        colour: bookColor(book.id, scheme),
-                      ),
-                    ),
                   stagger(_Section(strings.about)),
                   stagger(
                     _Tile(
@@ -112,6 +105,15 @@ class AppDrawer extends StatelessWidget {
                   ),
                   stagger(
                     _Tile(
+                      icon: Icons.shield_rounded,
+                      tint: QamusTheme.emerald,
+                      title: strings.privacy,
+                      subtitle: strings.privacyDetail,
+                      onTap: () => go(const PrivacyPage()),
+                    ),
+                  ),
+                  stagger(
+                    _Tile(
                       icon: Icons.workspace_premium_rounded,
                       tint: scheme.primary,
                       title: strings.licenses,
@@ -119,6 +121,19 @@ class AppDrawer extends StatelessWidget {
                           go(const AboutPage(section: AboutSection.licences)),
                     ),
                   ),
+
+                  // The six sources sit below everything else: they are a
+                  // reference the reader glances at, not a way to somewhere.
+                  stagger(_Section(strings.sources)),
+                  for (final book in scope.dictionary.books)
+                    stagger(
+                      _BookRow(
+                        name: book.name,
+                        count: strings.n(book.count),
+                        colour: bookColor(book.id, scheme),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
                 ],
               ),
             ),
@@ -162,19 +177,7 @@ class _DrawerHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Rosette(
-            size: 62,
-            child: Text(
-              'ق',
-              style: TextStyle(
-                fontFamily: QamusTheme.font,
-                fontSize: 26,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-                color: scheme.primary,
-              ),
-            ),
-          ),
+          const AppMark(size: 58),
           const SizedBox(width: 14),
           Expanded(
             child: Column(

@@ -2,8 +2,10 @@
 """
 Draws the launcher icon and writes it into every platform slot.
 
-The mark is the eight-point star of Islamic book illumination with the letter
-qaf at its centre, in the same jade-on-parchment palette the app uses.
+The mark is the letter qaf on the same violet gradient the word-of-the-day
+card wears, inside a ring broken by one bright arc — the still frame of the
+turning indicator the app opens with, so the icon and the splash screen are
+recognisably the same object.
 
 Run from the repository root:  python3 tools/make_icons.py
 """
@@ -11,20 +13,35 @@ Run from the repository root:  python3 tools/make_icons.py
 import json
 import math
 import os
-import struct
 
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 APP = os.path.join(ROOT, 'app')
-FONT = os.path.join(APP, 'assets', 'fonts', 'Amiri-Bold.ttf')
+FONT = os.path.join(APP, 'assets', 'fonts', 'Vazirmatn-Bold.ttf')
 
-PARCHMENT_TOP = (251, 247, 239)
-PARCHMENT_BOTTOM = (237, 228, 211)
-JADE = (15, 110, 92)
-GOLD = (185, 138, 60)
+# QamusTheme.gradient(QamusTheme.violet), evaluated: violet lightened 12%
+# towards white at the top corner, darkened 26% towards #120C2E at the bottom.
+GRADIENT_TOP = (140, 112, 255)
+GRADIENT_BOTTOM = (96, 71, 201)
 
 SUPERSAMPLE = 8
+
+
+def _diagonal_wash(s: int) -> Image.Image:
+    """The card's own gradient: top-start to bottom-end, corner to corner.
+
+    Built small and scaled up — a 64-pixel ramp resampled to a 4096-pixel icon
+    is indistinguishable from shading every pixel, and finishes instantly.
+    """
+    n = 64
+    small = Image.new('RGBA', (n, n))
+    pixels = small.load()
+    for y in range(n):
+        for x in range(n):
+            t = (x + y) / (2 * (n - 1))
+            pixels[x, y] = _lerp(GRADIENT_TOP, GRADIENT_BOTTOM, t) + (255,)
+    return small.resize((s, s), Image.BICUBIC)
 
 
 def draw_icon(size: int, background: bool = True) -> Image.Image:
@@ -34,50 +51,45 @@ def draw_icon(size: int, background: bool = True) -> Image.Image:
     draw = ImageDraw.Draw(image)
 
     if background:
-        # A soft vertical parchment gradient, drawn a row at a time.
-        for y in range(s):
-            t = y / max(s - 1, 1)
-            colour = tuple(
-                round(a + (b - a) * t)
-                for a, b in zip(PARCHMENT_TOP, PARCHMENT_BOTTOM)
-            )
-            draw.line([(0, y), (s, y)], fill=colour + (255,))
+        image.paste(_diagonal_wash(s), (0, 0))
 
     centre = s / 2
-    radius = s * 0.40
+    ring = s * 0.40
+    stroke = max(1, round(s * 0.042))
 
-    def star(rotation: float, scale: float, colour, width: float):
-        points = []
-        for i in range(16):
-            angle = rotation + i * math.pi / 8
-            r = radius * scale * (1.0 if i % 2 == 0 else 0.62)
-            points.append((centre + math.cos(angle) * r, centre + math.sin(angle) * r))
-        draw.polygon(points, outline=colour, width=max(1, round(width)))
-
-    star(-math.pi / 2, 1.00, JADE + (110,), s * 0.012)
-    star(-math.pi / 2 + math.pi / 8, 0.80, GOLD + (170,), s * 0.010)
+    # The full ring, faint: the indicator's track.
     draw.ellipse(
-        [centre - radius * 0.54, centre - radius * 0.54,
-         centre + radius * 0.54, centre + radius * 0.54],
-        outline=JADE + (90,), width=max(1, round(s * 0.008)),
+        [centre - ring, centre - ring, centre + ring, centre + ring],
+        outline=(255, 255, 255, 64), width=stroke,
+    )
+    # And the arc riding on it, bright — one frame of the animation.
+    draw.arc(
+        [centre - ring, centre - ring, centre + ring, centre + ring],
+        start=-100, end=45, fill=(255, 255, 255, 235), width=stroke,
     )
 
-    font = ImageFont.truetype(FONT, int(s * 0.44))
+    font = ImageFont.truetype(FONT, int(s * 0.42))
     glyph = 'ق'
     box = draw.textbbox((0, 0), glyph, font=font)
     draw.text(
         (centre - (box[0] + box[2]) / 2, centre - (box[1] + box[3]) / 2),
-        glyph, font=font, fill=JADE + (255,),
+        glyph, font=font, fill=(255, 255, 255, 255),
     )
 
     return image.resize((size, size), Image.LANCZOS)
+
+
+def _lerp(a, b, t):
+    return tuple(round(x + (y - x) * t) for x, y in zip(a, b))
 
 
 def write_png(path: str, size: int, background: bool = True):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     icon = draw_icon(size, background)
     if background:
-        flat = Image.new('RGB', icon.size, PARCHMENT_TOP)
+        # iOS refuses an icon with an alpha channel, so it is flattened onto
+        # the gradient's own top colour rather than onto white.
+        flat = Image.new('RGB', icon.size, GRADIENT_TOP)
         flat.paste(icon, mask=icon.split()[3])
         flat.save(path, 'PNG', optimize=True)
     else:
@@ -105,7 +117,6 @@ def ios():
     for entry in contents['images']:
         points = float(entry['size'].split('x')[0])
         scale = int(entry.get('scale', '1x').rstrip('x'))
-        # iOS icons must be fully opaque, with no alpha channel at all.
         write_png(os.path.join(icon_set, entry['filename']), round(points * scale))
 
 
@@ -120,8 +131,7 @@ def windows():
 
 
 def preview():
-    path = os.path.join(ROOT, 'docs', 'icon.png')
-    write_png(path, 512)
+    write_png(os.path.join(ROOT, 'docs', 'icon.png'), 512)
 
 
 if __name__ == '__main__':

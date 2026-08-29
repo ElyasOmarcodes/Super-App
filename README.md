@@ -14,13 +14,17 @@ Arabic and English.
 | | |
 |---|---|
 | ![the splash screen](docs/screens/splash.png) | ![the dashboard](docs/screens/dashboard.png) |
-| *the mark, the name, the author, the build* | *word of the day, corpus at a glance, the six lexicons* |
+| *the launcher mark, turning inside Material's arc* | *word of the day, corpus at a glance, the six lexicons* |
 | ![search results](docs/screens/search.png) | ![an entry](docs/screens/entry.png) |
 | *live results, collapsed by headword* | *every definition numbered, each one copyable on its own* |
 | ![the guide](docs/screens/guide.png) | ![the author](docs/screens/developer.png) |
 | *the manual shows the real control, then explains it plainly* | *who made it, and three ways to reach him* |
-| ![dark](docs/screens/dark.png) | |
-| *near-black by night, with the navigation curtain* | |
+| ![asking for notifications](docs/screens/notify.png) | ![the privacy policy](docs/screens/privacy.png) |
+| *consent is asked for last, with a mock of the real thing* | *nothing leaves the device, in all four languages* |
+| ![the sidebar](docs/screens/sidebar.png) | ![leaving](docs/screens/exit.png) |
+| *every way in, then the sources at the foot* | *the app asks before it closes* |
+| ![dark](docs/screens/dark.png) | ![choosing a language](docs/screens/onboarding.png) |
+| *near-black by night, with the navigation curtain* | *first launch, before anything else* |
 
 ---
 
@@ -38,7 +42,10 @@ Arabic and English.
 | **محفوظات** | نښه شوې کلمې او د لوستلو تاریخچه |
 | **شمېرل شوي تفصیلات** | هر شرح خپل عدد لري، او خپله د کاپي تڼۍ — د معجم له نامه سره |
 | **د کارونې لارښود** | هر افشن په ساده ژبه، د خپلې ریښتینې بڼې او مثال سره |
-| **د پروګرامر پاڼه** | م. الیاس عمر — واټساپ، ټلګرام، بریښنالیک، هر یو په یوه کلیک |
+| **د پروګرامر پاڼه** | م. الیاس عمر — انځور، واټساپ، ټلګرام، بریښنالیک، هر یو په یوه کلیک |
+| **د ورځې کلمه** | نایټوفیکشن — اندروید، iOS، وینډوز؛ اجازه د معرفي پر مهال غوښتل کیږي |
+| **د وتلو تایید** | د پروګرام څخه وتل یو ښکلی ډیالوګ پوښتي |
+| **د محرمیت تګلاره** | په پروګرام کې او په `docs/privacy-policy.md` کې، په څلورو ژبو |
 | **مډرن ډیزاین** | سپین/تور بک ګراند، رنګین کارټونه، نرم انمیشنونه، ټولټیپونه |
 
 ### Six source lexicons
@@ -199,6 +206,49 @@ scrolling underneath dissolves into the background instead of colliding with
 the bar. Tabs, the menu, the lexicon filter and every copy button answer a
 long press with their own name.
 
+### What a release build gives away
+
+`--obfuscate --split-debug-info` is on for every release target, so what ships
+is one AOT-compiled blob per architecture with its Dart symbol table replaced
+by meaningless names:
+
+| | |
+|---|---|
+| `libapp.so` / `App.framework` / `data\app.so` | the whole program, as machine code in **one file** — no `.dart` anywhere in the package |
+| class, method and field names | renamed; a stack trace from a release build is unreadable without the map |
+| `build/symbols/` | the map that reverses it, kept out of the package and shipped beside it in `qamus-android-other` |
+| Android's Java shim | R8 with `isMinifyEnabled`, plus `proguard-rules.pro` keeping what Gson and the engine reach by reflection |
+
+Two honest limits. Obfuscation is not encryption: a determined reader with a
+disassembler can still follow machine code, and the corpus asset is a plain
+`.xz` inside the package. What actually stops a *modified* build reaching
+anyone is the signature — the APK's signing key and, on Windows, the
+installer's — not the renaming.
+
+### The word of the day
+
+`lib/src/data/notifications.dart` names the three platforms' rules once rather
+than re-deriving them at each call site: Android 13+ shows a runtime dialog
+(and returns `null`, meaning *granted*, on older releases); iOS asks once and
+can never be asked again; Windows needs no consent, only a registered app id.
+Linux is deliberately excluded — the plugin can post a notification there but
+cannot *schedule* one, so the switch says so plainly instead of promising a
+word that never comes.
+
+The queue is rebuilt on every launch rather than left to repeat: seven days
+are scheduled individually, each with **that day's own word**, which one
+repeating notification could never do — and the rebuild also repairs a
+schedule the system dropped. Consent is asked for at the *end* of onboarding,
+after a mock of the real notification built from today's actual word, because
+a system dialog that arrives before any explanation gets refused.
+
+### Leaving
+
+Three routes into one dialog: Android's back gesture at the root of the stack
+(`PopScope`), a desktop window's close button (`didRequestAppExit`), and
+Escape when there is nothing left to pop. Anywhere but the home tab, back
+means *home* — leaving from the settings screen would surprise anyone.
+
 ### The manual
 
 `lib/src/ui/guide_page.dart` explains every control in language a child could
@@ -216,7 +266,7 @@ cannot. Each lesson ends with a worked example — type `يب` and see حَبي�
 ```bash
 cd app
 flutter pub get
-flutter test                       # 60 tests, run against the real corpus
+flutter test                       # 76 tests, run against the real corpus
 flutter run -d windows             # or android, or ios
 ```
 
@@ -256,7 +306,8 @@ re-deflating an LZMA stream only makes it bigger.
 |---|---|
 | `qamus-arm64-apk` | **`app-arm64-v8a-release.apk.xz`** — on its own, since it is what almost every phone needs |
 | `qamus-android-other` | the armeabi-v7a and x86_64 APKs, and the AAB |
-| `qamus-windows` | the release bundle |
+| `qamus-windows-exe` | **`qamus-setup.exe.xz`** — one self-contained Windows installer, built with Inno Setup |
+| `qamus-windows` | the loose release bundle, for anyone who would rather not install |
 | `qamus-ios` | unsigned `.ipa` |
 
 Pushing a `v*` tag additionally publishes them as a GitHub release.
@@ -269,10 +320,13 @@ Pushing a `v*` tag additionally publishes them as a GitHub release.
 app/
   lib/src/data/     arabic · corpus · bootstrap · dictionary · models · settings
   lib/src/l10n/     locales · strings          four languages, one table
+  lib/src/data/     … · notifications                 the word of the day
   lib/src/ui/       shell · splash · dashboard · home · entry · roots
                     deep_search · library · settings · guide · developer
-                    about · onboarding/
+                    privacy · about · onboarding/
   lib/src/developer.dart                       the author, and the version
+  assets/img/       developer.jpg              the author's portrait
+  windows/packaging/qamus.iss                  the single-file installer
   lib/src/theme.dart
   assets/db/        qamus.corpus.xz            the packed corpus
   assets/fonts/     Vazirmatn                  subset to the Arabic ranges

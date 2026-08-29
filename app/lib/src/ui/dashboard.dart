@@ -26,9 +26,7 @@ class Dashboard extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     // One word per day, the same for everyone, chosen without a scan.
-    final today = DateTime.now();
-    final seed = today.year * 10000 + today.month * 100 + today.day;
-    final featured = scope.dictionary.featured(seed * 7919);
+    final featured = scope.dictionary.wordOfDay(DateTime.now());
 
     final history = settings.history;
     final favourites = settings.favourites;

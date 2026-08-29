@@ -30,7 +30,7 @@ class DeveloperPage extends StatelessWidget {
         slivers: [
           SliverAppBar(
             pinned: true,
-            expandedHeight: 300,
+            expandedHeight: 380,
             flexibleSpace: FlexibleSpaceBar(
               collapseMode: CollapseMode.parallax,
               background: const _Hero(),
@@ -212,35 +212,52 @@ class _Hero extends StatelessWidget {
       colors: const [QamusTheme.violet, QamusTheme.rose],
       child: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 52, 24, 18),
+          padding: const EdgeInsets.fromLTRB(24, 46, 24, 18),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              // The photograph, in the proportions of a formal portrait,
+              // behind a hairline frame so it reads as a picture rather than
+              // as a floating cut-out.
               Container(
-                width: 96,
-                height: 96,
+                width: 132,
+                height: 176,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: QamusTheme.gradient(QamusTheme.violet),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: scheme.surfaceContainerLowest.withValues(alpha: 0.9),
+                    width: 3,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: QamusTheme.violet.withValues(alpha: 0.4),
-                      blurRadius: 26,
-                      offset: const Offset(0, 10),
+                      color: QamusTheme.violet.withValues(alpha: 0.34),
+                      blurRadius: 28,
+                      offset: const Offset(0, 12),
                     ),
                   ],
                 ),
-                child: const Center(
-                  child: Text(
-                    'EO',
-                    textDirection: TextDirection.ltr,
-                    style: TextStyle(
-                      fontFamily: QamusTheme.font,
-                      fontSize: 30,
-                      height: 1.4,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1,
-                      color: Colors.white,
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  'assets/img/developer.jpg',
+                  fit: BoxFit.cover,
+                  // A missing asset must never take the page down with it.
+                  errorBuilder: (context, _, _) => DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: QamusTheme.gradient(QamusTheme.violet),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'EO',
+                        textDirection: TextDirection.ltr,
+                        style: TextStyle(
+                          fontFamily: QamusTheme.font,
+                          fontSize: 30,
+                          height: 1.4,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                          color: Colors.white,
+                        ),
+                      ),
                     ),
                   ),
                 ),

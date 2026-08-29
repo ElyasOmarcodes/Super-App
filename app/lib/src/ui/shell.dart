@@ -1,12 +1,16 @@
+import 'dart:ui' show AppExitResponse;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../app.dart';
+import '../l10n/strings.dart';
 import 'favourites_page.dart';
 import 'home_page.dart';
 import 'recent_page.dart';
 import 'settings_page.dart';
 import 'widgets/app_drawer.dart';
+import 'widgets/exit_dialog.dart';
 
 /// The four-tab frame the whole app lives in.
 ///
@@ -19,17 +23,76 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
-class _AppShellState extends State<AppShell> {
+class _AppShellState extends State<AppShell> with WidgetsBindingObserver {
   int _index = 0;
 
   /// The drawer lives on the *shell's* Scaffold, not the home page's, so it
   /// covers the navigation bar instead of sliding in underneath it.
   final _scaffold = GlobalKey<ScaffoldState>();
 
+  /// Guards against a second dialog while the first is still on screen — a
+  /// double tap on the window's close button would otherwise stack two.
+  bool _asking = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  /// The desktop window's close button, and anything else that asks the app
+  /// to quit. Android's back gesture arrives through [PopScope] instead.
+  @override
+  Future<AppExitResponse> didRequestAppExit() async {
+    if (!mounted || _asking) return AppExitResponse.cancel;
+    _asking = true;
+    try {
+      return await confirmExit(context)
+          ? AppExitResponse.exit
+          : AppExitResponse.cancel;
+    } finally {
+      _asking = false;
+    }
+  }
+
+  Future<void> _handleBack() async {
+    // Anywhere but the home tab, back should mean "home" — leaving from
+    // the settings screen would surprise anyone.
+    if (_index != 0) {
+      setState(() => _index = 0);
+      return;
+    }
+    if (_asking) return;
+    _asking = true;
+    try {
+      if (await confirmExit(context)) await leaveApp();
+    } finally {
+      _asking = false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = context.str;
 
+    return PopScope(
+      // The root of the stack: a back gesture here means "close the app", so
+      // it is intercepted and put to the reader as a question.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _handleBack();
+      },
+      child: _buildShell(context, strings),
+    );
+  }
+
+  Widget _buildShell(BuildContext context, Strings strings) {
     return Scaffold(
       key: _scaffold,
       extendBody: true,

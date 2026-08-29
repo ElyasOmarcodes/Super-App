@@ -5,6 +5,7 @@ import '../developer.dart';
 import '../l10n/locales.dart';
 import '../l10n/strings.dart';
 import '../theme.dart';
+import 'widgets/app_mark.dart';
 import 'widgets/motion.dart';
 
 /// The first thing anyone sees: the mark, the name, the author and the build.
@@ -147,7 +148,10 @@ class _SplashPageState extends State<SplashPage>
   }
 }
 
-/// The rosette with the app's letter, breathing gently as it settles.
+/// The launcher mark, settling into place inside a turning progress ring.
+///
+/// The same ring Google Play draws while an app installs: Material's
+/// indeterminate arc, stretching and contracting as it goes round.
 class _Mark extends StatelessWidget {
   const _Mark({required this.controller});
 
@@ -155,7 +159,6 @@ class _Mark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final settle = CurvedAnimation(
       parent: controller,
       curve: const Interval(0, 0.55, curve: Curves.easeOutBack),
@@ -165,24 +168,11 @@ class _Mark extends StatelessWidget {
       animation: settle,
       builder: (context, child) =>
           Transform.scale(scale: 0.82 + 0.18 * settle.value, child: child),
-      child: Rosette(
-        size: 138,
-        child: Text(
-          'ق',
-          style: TextStyle(
-            fontFamily: QamusTheme.font,
-            fontSize: 54,
-            fontWeight: FontWeight.w700,
-            height: 1.35,
-            color: scheme.primary,
-          ),
-        ),
-      ),
+      child: const AppMark(size: 148, progress: true),
     );
   }
 }
 
-/// The progress bar, present only while the first launch is doing real work.
 class _Progress extends StatelessWidget {
   const _Progress({required this.progress});
 

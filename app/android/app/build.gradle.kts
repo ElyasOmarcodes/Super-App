@@ -13,6 +13,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // flutter_local_notifications schedules with java.time, which only
+        // exists from API 26 up; desugaring back-fills it for older phones.
+        isCoreLibraryDesugaringEnabled = true
     }
 
     androidResources {
@@ -42,8 +45,23 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+
+            // The Dart half is already AOT machine code with its symbols
+            // stripped by --obfuscate. R8 does the same for the thin Java and
+            // Kotlin shim around it: names go, dead code goes, and what is
+            // left does not read as source in a decompiler.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
+}
+
+dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {

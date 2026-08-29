@@ -8,6 +8,7 @@ import 'about_page.dart';
 import 'books_sheet.dart';
 import 'developer_page.dart';
 import 'guide_page.dart';
+import 'privacy_page.dart';
 import 'widgets/motion.dart';
 
 /// Language, appearance, reading preferences, sources and credits.
@@ -149,6 +150,17 @@ class SettingsPage extends StatelessWidget {
               ),
             ),
 
+            // ----------------------------------------------- notifications
+            stagger(
+              _Group(
+                title: strings.dailyWord,
+                icon: Icons.notifications_active_rounded,
+                tint: QamusTheme.cyan,
+                subtitle: strings.dailyWordDetail,
+                children: const [_DailyWordControls()],
+              ),
+            ),
+
             // ----------------------------------------------------- sources
             stagger(
               _Group(
@@ -236,6 +248,11 @@ class SettingsPage extends StatelessWidget {
                           const AboutPage(section: AboutSection.how),
                         ),
                         (
+                          Icons.shield_rounded,
+                          strings.privacy,
+                          const PrivacyPage(),
+                        ),
+                        (
                           Icons.workspace_premium_rounded,
                           strings.licenses,
                           const AboutPage(section: AboutSection.licences),
@@ -272,6 +289,139 @@ class SettingsPage extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The word-of-the-day switch, and the hour it arrives at.
+///
+/// The switch is the reader's wish; whether the platform honours it is a
+/// separate question, so turning it on asks for consent and turns itself back
+/// off if consent is refused.
+class _DailyWordControls extends StatefulWidget {
+  const _DailyWordControls();
+
+  @override
+  State<_DailyWordControls> createState() => _DailyWordControlsState();
+}
+
+class _DailyWordControlsState extends State<_DailyWordControls> {
+  bool _busy = false;
+
+  Future<void> _toggle(bool wanted) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    final scope = context.qamus;
+    final messenger = ScaffoldMessenger.of(context);
+    final strings = context.str;
+
+    var allowed = true;
+    if (wanted) allowed = await scope.notifications.requestPermission();
+
+    await scope.settings.setDailyWord(wanted && allowed);
+    await scope.notifications.reschedule(
+      dictionary: scope.dictionary,
+      settings: scope.settings,
+    );
+
+    if (!mounted) return;
+    if (wanted && !allowed) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(strings.notificationsBlocked)),
+      );
+    }
+    setState(() => _busy = false);
+  }
+
+  Future<void> _setHour(int hour) async {
+    final scope = context.qamus;
+    await scope.settings.setDailyWordHour(hour);
+    await scope.notifications.reschedule(
+      dictionary: scope.dictionary,
+      settings: scope.settings,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = context.qamus;
+    final strings = context.str;
+    final theme = Theme.of(context);
+    final settings = scope.settings;
+    final supported = scope.notifications.available;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: settings.dailyWord && supported,
+          onChanged: supported && !_busy ? _toggle : null,
+          title: Text(strings.dailyWord, style: theme.textTheme.titleMedium),
+          subtitle: Text(
+            supported
+                ? strings.dailyWordDetail
+                : strings.notificationsUnavailable,
+            style: theme.textTheme.bodySmall,
+          ),
+        ),
+        // The hour only matters once something is going to arrive.
+        AnimatedSize(
+          duration: const Duration(milliseconds: 240),
+          curve: Curves.easeOutCubic,
+          child: settings.dailyWord && supported
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        strings.notificationTime,
+                        style: theme.textTheme.titleSmall,
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 40,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          children: [
+                            for (final hour in const [
+                              5,
+                              6,
+                              7,
+                              8,
+                              9,
+                              12,
+                              18,
+                              21,
+                            ])
+                              Padding(
+                                padding: const EdgeInsetsDirectional.only(
+                                  end: 8,
+                                ),
+                                child: ChoiceChip(
+                                  label: Text(strings.hourLabel(hour)),
+                                  selected: settings.dailyWordHour == hour,
+                                  onSelected: (_) => _setHour(hour),
+                                  labelStyle: TextStyle(
+                                    fontFamily: QamusTheme.font,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                    color: settings.dailyWordHour == hour
+                                        ? Colors.white
+                                        : theme.colorScheme.onSurface,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : const SizedBox(width: double.infinity),
+        ),
+      ],
     );
   }
 }

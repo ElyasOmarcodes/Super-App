@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../l10n/locales.dart';
 import '../../l10n/strings.dart';
-import '../../theme.dart';
 import '../shell.dart';
+import '../widgets/app_mark.dart';
 import '../widgets/motion.dart';
 import 'intro_pages.dart';
+import 'notification_consent.dart';
 
 /// First launch: pick a language, then read the three intro cards.
 ///
@@ -20,8 +21,23 @@ class OnboardingFlow extends StatefulWidget {
   State<OnboardingFlow> createState() => _OnboardingFlowState();
 }
 
+/// The three things a first launch asks for, in order.
+enum _Stage { language, intro, notifications }
+
 class _OnboardingFlowState extends State<OnboardingFlow> {
-  late bool _showIntro = Qamus.of(context).settings.chosenLocale != null;
+  late _Stage _stage = Qamus.of(context).settings.chosenLocale == null
+      ? _Stage.language
+      : _Stage.intro;
+
+  /// Consent is asked for last, once the reader knows what the app is: a
+  /// system dialog that arrives before any explanation gets refused.
+  void _afterIntro() {
+    if (Qamus.of(context).notifications.available) {
+      setState(() => _stage = _Stage.notifications);
+    } else {
+      _finish();
+    }
+  }
 
   Future<void> _finish() async {
     final navigator = Navigator.of(context);
@@ -45,12 +61,20 @@ class _OnboardingFlowState extends State<OnboardingFlow> {
           child: child,
         ),
       ),
-      child: _showIntro
-          ? IntroPages(key: const ValueKey('intro'), onDone: _finish)
-          : _LanguagePage(
-              key: const ValueKey('language'),
-              onChosen: () => setState(() => _showIntro = true),
-            ),
+      child: switch (_stage) {
+        _Stage.language => _LanguagePage(
+          key: const ValueKey('language'),
+          onChosen: () => setState(() => _stage = _Stage.intro),
+        ),
+        _Stage.intro => IntroPages(
+          key: const ValueKey('intro'),
+          onDone: _afterIntro,
+        ),
+        _Stage.notifications => NotificationConsentPage(
+          key: const ValueKey('notifications'),
+          onDone: _finish,
+        ),
+      },
     );
   }
 }
@@ -114,20 +138,7 @@ class _LanguagePageState extends State<_LanguagePage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        const FadeSlideIn(
-          child: Rosette(
-            size: 104,
-            child: Text(
-              'ق',
-              style: TextStyle(
-                fontFamily: QamusTheme.font,
-                fontSize: 42,
-                fontWeight: FontWeight.w700,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ),
+        const FadeSlideIn(child: AppMark(size: 104)),
         const SizedBox(height: 26),
         FadeSlideIn(
           delay: const Duration(milliseconds: 120),

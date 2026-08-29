@@ -23,6 +23,8 @@ class Settings extends ChangeNotifier {
   static const _kVowels = 'showVowels';
   static const _kLocale = 'locale';
   static const _kOnboarded = 'onboarded';
+  static const _kNotify = 'dailyWord';
+  static const _kNotifyHour = 'dailyWordHour';
 
   static Future<Settings> load(Iterable<int> allBookIds) async {
     final prefs = await SharedPreferences.getInstance();
@@ -83,6 +85,27 @@ class Settings extends ChangeNotifier {
 
   /// False until the intro pages have been seen through.
   bool get onboarded => _prefs.getBool(_kOnboarded) ?? false;
+
+  // ---------------------------------------------------------- notifications
+  /// Whether the reader wants the word of the day delivered.
+  ///
+  /// This is the reader's *wish*, kept separately from whether the system has
+  /// actually granted permission — someone can turn the switch on before the
+  /// platform dialog, or revoke the grant in system settings afterwards.
+  bool get dailyWord => _prefs.getBool(_kNotify) ?? false;
+
+  Future<void> setDailyWord(bool value) async {
+    await _prefs.setBool(_kNotify, value);
+    notifyListeners();
+  }
+
+  /// The hour of the day, 0–23, the word arrives at. Morning by default.
+  int get dailyWordHour => _prefs.getInt(_kNotifyHour) ?? 8;
+
+  Future<void> setDailyWordHour(int hour) async {
+    await _prefs.setInt(_kNotifyHour, hour.clamp(0, 23));
+    notifyListeners();
+  }
 
   Future<void> setOnboarded(bool value) async {
     await _prefs.setBool(_kOnboarded, value);

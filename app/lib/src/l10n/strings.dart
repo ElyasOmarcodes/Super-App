@@ -870,6 +870,199 @@ class Strings {
         'sends nothing about you to anyone.',
   );
 
+  // -------------------------------------------------------- notifications
+  String get dailyWord =>
+      _pick('كلمة اليوم', 'د ورځې کلمه', 'واژهٔ روز', 'Word of the day');
+  String get dailyWordDetail => _pick(
+    'كلمة واحدة من المعجم، تصلك كل يوم',
+    'له قاموسه یوه کلمه، هره ورځ درځي',
+    'یک واژه از فرهنگ، هر روز به شما می‌رسد',
+    'One word from the lexicon, delivered every day',
+  );
+  String get dailyWordAsk => _pick(
+    'أتأذن لنا أن نوقظك بكلمة؟',
+    'اجازه راکوئ چې په یوه کلمه مو راویښ کړو؟',
+    'اجازه می‌دهید با واژه‌ای بیدارتان کنیم؟',
+    'May we wake you with a word?',
+  );
+  String get dailyWordAskDetail => _pick(
+    'كل صباح كلمة واحدة من المعاجم الستّة، بشرحها. لا شيء غيرها — '
+        'ولا إعلان، ولا اتصال بالإنترنت.',
+    'هر سهار له شپږو معاجمو یوه کلمه، له خپلې شرحې سره. بل هېڅ نه — '
+        'نه اعلان، نه له انټرنټ سره اړیکه.',
+    'هر بامداد یک واژه از شش فرهنگ، با شرحش. جز این هیچ — '
+        'نه آگهی، نه اتصال به اینترنت.',
+    'One word each morning from the six lexicons, with its meaning. Nothing '
+        'else — no advertising, and no connection to the internet.',
+  );
+  String get allowNotifications => _pick(
+    'نعم، أيقظني',
+    'هو، راویښ مې کړئ',
+    'بله، بیدارم کنید',
+    'Yes, wake me',
+  );
+  String get notNow => _pick('ليس الآن', 'اوس نه', 'اکنون نه', 'Not now');
+  String get notificationTime =>
+      _pick('وقت الوصول', 'د رارسېدو وخت', 'زمان رسیدن', 'Delivery time');
+  String get notificationsBlocked => _pick(
+    'الإشعارات موقوفة من إعدادات النظام',
+    'نایټوفیکشن د سیستم له تنظیماتو بند دی',
+    'اعلان‌ها از تنظیمات سیستم بسته است',
+    'Notifications are switched off in the system settings',
+  );
+  String get notificationsUnavailable => _pick(
+    'لا تدعم هذه المنصّة الإشعارات',
+    'دا پلیټفارم نایټوفیکشن نه مني',
+    'این سکو اعلان‌ها را پشتیبانی نمی‌کند',
+    'This platform does not support notifications',
+  );
+  String hourLabel(int hour) => _pick(
+    '${n(hour)}:٠٠',
+    '${n(hour)}:۰۰',
+    '${n(hour)}:۰۰',
+    '${hour.toString().padLeft(2, '0')}:00',
+  );
+
+  // ----------------------------------------------------------------- exit
+  String get exitTitle => _pick(
+    'أتغادر المعجم؟',
+    'له قاموسه وځئ؟',
+    'از فرهنگ بیرون می‌روید؟',
+    'Leave the dictionary?',
+  );
+  String get exitDetail => _pick(
+    'محفوظاتك وسجلّ قراءتك تبقى كما هي، والمعجم يفتح في اللحظة التي تعود فيها.',
+    'ستاسو خوندي شوي او د لوستلو تاریخچه هماغسې پاتې کیږي، او قاموس هماغه '
+        'شېبه پرانیځي چې بیرته راشئ.',
+    'ذخیره‌ها و تاریخچهٔ خواندنتان همان‌گونه می‌ماند، و فرهنگ همان لحظه که '
+        'بازگردید باز می‌شود.',
+    'Your saved words and reading history stay exactly as they are, and the '
+        'dictionary opens the moment you come back.',
+  );
+  String get exitConfirm => _pick('اخرج', 'وځه', 'بیرون', 'Leave');
+  String get stay => _pick('ابقَ هنا', 'دلته پاتې شه', 'همین‌جا بمان', 'Stay');
+
+  // --------------------------------------------------------------- policy
+  String get privacy => _pick(
+    'سياسة الخصوصية',
+    'د محرمیت تګلاره',
+    'سیاست حریم خصوصی',
+    'Privacy policy',
+  );
+  String get privacyDetail => _pick(
+    'ما الذي يعرفه هذا التطبيق عنك — ولماذا لا شيء',
+    'دا اپلیکیشن ستاسو په اړه څه پوهیږي — او ولې هېڅ نه',
+    'این برنامه دربارهٔ شما چه می‌داند — و چرا هیچ',
+    'What this app knows about you — and why it is nothing',
+  );
+  String get privacyUpdated => _pick(
+    'آخر تحديث',
+    'وروستی تازه کول',
+    'آخرین به‌روزرسانی',
+    'Last updated',
+  );
+
+  String get privacyHeading1 => _pick(
+    'لا نجمع شيئًا',
+    'هېڅ نه راټولوو',
+    'هیچ گرد نمی‌آوریم',
+    'We collect nothing',
+  );
+  String get privacyBody1 => _pick(
+    'لا يجمع هذا التطبيق أيّ بيانات شخصية، ولا يُنشئ لك حسابًا، ولا يطلب '
+        'اسمًا ولا بريدًا ولا رقمًا. لا يوجد خادم يتّصل به، لأنّه لا يوجد خادم.',
+    'دا اپلیکیشن هېڅ شخصي معلومات نه راټولوي، تاسو ته حساب نه جوړوي، او نه '
+        'نوم غواړي، نه بریښنالیک، نه شمېره. هېڅ سرور نشته چې ورسره اړیکه ونیسي، '
+        'ځکه هېڅ سرور نشته.',
+    'این برنامه هیچ داده‌ای شخصی گرد نمی‌آورد، برایتان حسابی نمی‌سازد، و نه '
+        'نام می‌خواهد، نه رایانامه، نه شماره. سروری نیست که به آن وصل شود، '
+        'زیرا سروری وجود ندارد.',
+    'This app collects no personal data, creates no account for you, and asks '
+        'for no name, no email and no number. There is no server it talks to, '
+        'because there is no server.',
+  );
+  String get privacyHeading2 => _pick(
+    'ما يبقى على جهازك',
+    'څه چې ستاسو په وسیله کې پاتې کیږي',
+    'آنچه در دستگاه شما می‌ماند',
+    'What stays on your device',
+  );
+  String get privacyBody2 => _pick(
+    'الكلمات التي تحفظها، وسجلّ ما قرأت، ولغة الواجهة ومظهرها، ووقت كلمة '
+        'اليوم — كلّها تُخزَّن في جهازك وحده، ولا تغادره أبدًا. حذف التطبيق '
+        'يمحوها معه.',
+    'هغه کلمې چې خوندي کوئ، د لوستلو تاریخچه، د مخ ژبه او بڼه، او د ورځې د '
+        'کلمې وخت — ټول یوازې ستاسو په وسیله کې خوندي کیږي او هېڅکله ترې نه '
+        'وځي. د اپلیکیشن ړنګول یې ورسره پاکوي.',
+    'واژه‌هایی که ذخیره می‌کنید، تاریخچهٔ خواندن، زبان و ظاهر رابط، و زمان '
+        'واژهٔ روز — همه تنها در دستگاه شما نگهداری می‌شود و هرگز از آن بیرون '
+        'نمی‌رود. پاک کردن برنامه آن را نیز پاک می‌کند.',
+    'The words you save, what you have read, the interface language and theme, '
+        'and the time of the daily word — all of it is stored on your device '
+        'alone and never leaves it. Uninstalling the app erases it with them.',
+  );
+  String get privacyHeading3 =>
+      _pick('الأذونات', 'اجازې', 'اجازه‌ها', 'Permissions');
+  String get privacyBody3 => _pick(
+    'الإذن الوحيد الذي نطلبه هو إرسال الإشعارات، ولا نطلبه إلّا لكلمة اليوم، '
+        'ويمكنك رفضه أو سحبه في أي وقت دون أن يفقد التطبيق شيئًا. لا نطلب '
+        'الموقع، ولا الكاميرا، ولا جهات الاتصال، ولا الملفّات.',
+    'یوازینۍ اجازه چې غواړو د نایټوفیکشن لېږل دي، هغه هم یوازې د ورځې د کلمې '
+        'لپاره، او هر وخت یې ردولی یا بیرته اخیستلی شئ بې له دې چې اپلیکیشن څه '
+        'له لاسه ورکړي. نه موقعیت غواړو، نه کامره، نه اړیکې، نه فایلونه.',
+    'تنها اجازه‌ای که می‌خواهیم فرستادن اعلان است، آن هم تنها برای واژهٔ روز، '
+        'و هر زمان می‌توانید ردش کنید یا پس بگیرید بی‌آنکه برنامه چیزی از دست '
+        'بدهد. نه مکان می‌خواهیم، نه دوربین، نه مخاطبان، نه پرونده‌ها.',
+    'The only permission we ask for is to send notifications, and only for the '
+        'word of the day. You may refuse it, or withdraw it later, and the app '
+        'loses nothing. We do not ask for location, camera, contacts or files.',
+  );
+  String get privacyHeading4 => _pick(
+    'لا إنترنت ولا إعلانات',
+    'نه انټرنټ، نه اعلانونه',
+    'نه اینترنت، نه آگهی',
+    'No internet, no advertising',
+  );
+  String get privacyBody4 => _pick(
+    'المعجم كلّه داخل التطبيق. لا إعلانات، ولا متتبّعات، ولا تحليلات، ولا '
+        'مكتبات طرف ثالث تراقبك. ولا يتّصل التطبيق بالشبكة إلّا إذا ضغطتَ '
+        'بنفسك على أحد روابط التواصل في صفحة المطوّر.',
+    'ټول قاموس د اپلیکیشن دننه دی. نه اعلانونه، نه څارونکي، نه تحلیلونه، او '
+        'نه د دریمې خوا کتابتونونه چې تاسو وڅاري. اپلیکیشن له شبکې سره اړیکه '
+        'نه نیسي مګر دا چې پخپله د پروګرامر په پاڼه کې پر یوه اړیکه کلیک وکړئ.',
+    'همهٔ فرهنگ درون برنامه است. نه آگهی، نه ردیاب، نه تحلیل، و نه کتابخانه‌ای '
+        'از دیگران که شما را بپاید. برنامه به شبکه وصل نمی‌شود مگر آنکه خودتان '
+        'در صفحهٔ برنامه‌نویس روی پیوندی بفشارید.',
+    'The whole dictionary is inside the app. No advertising, no trackers, no '
+        'analytics, and no third-party libraries watching you. The app touches '
+        'the network only if you yourself tap a contact link on the author\'s '
+        'page.',
+  );
+  String get privacyHeading5 =>
+      _pick('حقوق المعاجم', 'د معاجمو حقوق', 'حقوق فرهنگ‌ها', 'The lexicons');
+  String get privacyBody5 => _pick(
+    'نصوص المعاجم الستّة ملك لناشريها، وتُعرض هنا للاطّلاع والدراسة. أمّا '
+        'برمجة التطبيق فمن صنع المطوّر المذكور في صفحة «عن المطوّر».',
+    'د شپږو معاجمو متنونه د خپلو خپرندویانو ملکیت دي او دلته د لوستلو او '
+        'زده‌کړې لپاره ښودل کیږي. د اپلیکیشن پروګرام‌جوړونه د هغه پروګرامر کار '
+        'دی چې د «پروګرامر په اړه» پاڼه کې یاد شوی.',
+    'متن‌های شش فرهنگ از آنِ ناشرانشان است و اینجا برای خواندن و آموختن نشان '
+        'داده می‌شود. برنامه‌نویسی برنامه کار همان کسی است که در صفحهٔ '
+        '«دربارهٔ برنامه‌نویس» آمده است.',
+    'The texts of the six lexicons belong to their publishers and are shown '
+        'here for reading and study. The app itself is the work of the '
+        'developer named on the "About the developer" page.',
+  );
+  String get privacyContact => _pick(
+    'لأيّ سؤال عن الخصوصية، تجد وسائل التواصل في صفحة «عن المطوّر».',
+    'د محرمیت په اړه هرې پوښتنې لپاره، د اړیکې لارې د «پروګرامر په اړه» پاڼه '
+        'کې دي.',
+    'برای هر پرسشی دربارهٔ حریم خصوصی، راه‌های تماس در صفحهٔ «دربارهٔ '
+        'برنامه‌نویس» است.',
+    'For any question about privacy, the contact details are on the "About the '
+        'developer" page.',
+  );
+
   // ------------------------------------------------------- counted nouns
   String _arabicCount(int n, String one, String two, String few, String many) =>
       switch (n) {
