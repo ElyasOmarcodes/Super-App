@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../app.dart';
 import '../developer.dart';
@@ -58,7 +60,16 @@ class PrivacyPage extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(title: Text(strings.privacy)),
+      appBar: AppBar(
+        title: Text(strings.privacy),
+        actions: [
+          IconButton(
+            tooltip: strings.privacyOnline,
+            onPressed: () => _openPublished(context),
+            icon: const Icon(Icons.open_in_new_rounded),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 4, 18, 48),
         children: [
@@ -170,6 +181,30 @@ class PrivacyPage extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Opens the published policy in the reader's browser.
+///
+/// Google Play links to that URL, so anyone comparing the two should be able
+/// to reach it from inside the app. If no browser answers, the address is
+/// handed over instead of failing silently.
+Future<void> _openPublished(BuildContext context) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final strings = context.str;
+  var opened = false;
+  try {
+    opened = await launchUrl(
+      Developer.privacyPolicy,
+      mode: LaunchMode.externalApplication,
+    );
+  } catch (_) {
+    opened = false;
+  }
+  if (opened) return;
+  await Clipboard.setData(
+    ClipboardData(text: Developer.privacyPolicy.toString()),
+  );
+  messenger.showSnackBar(SnackBar(content: Text(strings.couldNotOpen)));
 }
 
 /// The same policy as plain text, for `docs/privacy-policy.md` and for anyone

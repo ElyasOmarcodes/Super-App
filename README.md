@@ -14,13 +14,13 @@ Arabic and English.
 | | |
 |---|---|
 | ![the splash screen](docs/screens/splash.png) | ![the dashboard](docs/screens/dashboard.png) |
-| *the launcher mark, turning inside Material's arc* | *word of the day, corpus at a glance, the six lexicons* |
+| *the scalloped mark, turning as the app opens* | *word of the day, corpus at a glance, the six lexicons* |
 | ![search results](docs/screens/search.png) | ![an entry](docs/screens/entry.png) |
 | *live results, collapsed by headword* | *every definition numbered, each one copyable on its own* |
 | ![the guide](docs/screens/guide.png) | ![the author](docs/screens/developer.png) |
-| *the manual shows the real control, then explains it plainly* | *who made it, and three ways to reach him* |
+| *the manual shows the real control, then explains it plainly* | *a circular portrait ringed by all six accents* |
 | ![asking for notifications](docs/screens/notify.png) | ![the privacy policy](docs/screens/privacy.png) |
-| *consent is asked for last, with a mock of the real thing* | *nothing leaves the device, in all four languages* |
+| *consent is asked for last, with a mock of the real thing* | *nothing leaves the device — and it links out to the hosted copy* |
 | ![the sidebar](docs/screens/sidebar.png) | ![leaving](docs/screens/exit.png) |
 | *every way in, then the sources at the foot* | *the app asks before it closes* |
 | ![dark](docs/screens/dark.png) | ![choosing a language](docs/screens/onboarding.png) |
@@ -206,6 +206,16 @@ scrolling underneath dissolves into the background instead of colliding with
 the bar. Tabs, the menu, the lexicon filter and every copy button answer a
 long press with their own name.
 
+### The mark
+
+`lib/src/ui/widgets/app_mark.dart` paints the launcher icon in Dart — the
+scalloped disc of Material's newer loading indicator, carrying the letter ق,
+inside a soft halo. `tools/make_icons.py` draws the same curve with the same
+ten lobes and the same swell, frozen at the angle the splash starts from, so
+the icon and the first screen are recognisably one object rather than two
+drawings of one idea. On the splash the shape turns and its lobes breathe; it
+stops, at the icon's own angle, when the system asks for reduced motion.
+
 ### What a release build gives away
 
 `--obfuscate --split-debug-info` is on for every release target, so what ships
@@ -266,7 +276,7 @@ cannot. Each lesson ends with a worked example — type `يب` and see حَبي�
 ```bash
 cd app
 flutter pub get
-flutter test                       # 76 tests, run against the real corpus
+flutter test                       # 79 tests, run against the real corpus
 flutter run -d windows             # or android, or ios
 ```
 
@@ -292,6 +302,25 @@ python3 tools/make_icons.py
 > Building for **Linux** additionally downloads the SQLite amalgamation through
 > CMake `FetchContent`, so that target needs network access at configure time.
 > Android, Windows and iOS use prebuilt or vendored SQLite and do not.
+
+---
+
+## The privacy policy
+
+Three copies, one source of truth:
+
+| | |
+|---|---|
+| in the app | `lib/src/ui/privacy_page.dart`, in all four languages, with a button in the corner that opens the hosted copy in a browser |
+| `docs/privacy-policy.html` | the English page to host — the app's own palette, cards and mark, as one self-contained file with no build step |
+| `docs/privacy-policy.md` | the same five sections in all four languages, generated from the app's strings |
+
+The hosted page is at
+<https://sites.google.com/view/qamoos-arabi/privacy>, which is what a Play
+Store listing points at. Tests assert that both the `.md` and the `.html`
+carry every heading the app shows, so the three cannot drift apart.
+
+![the hosted policy](docs/screens/policy-web.png)
 
 ---
 
@@ -327,6 +356,9 @@ app/
   lib/src/developer.dart                       the author, and the version
   assets/img/       developer.jpg              the author's portrait
   windows/packaging/qamus.iss                  the single-file installer
+docs/
+  privacy-policy.html                          the page that gets hosted
+  privacy-policy.md                            the same, in four languages
   lib/src/theme.dart
   assets/db/        qamus.corpus.xz            the packed corpus
   assets/fonts/     Vazirmatn                  subset to the Arabic ranges

@@ -21,6 +21,13 @@ class Developer {
       Uri.parse('https://t.me/${telegramHandle.substring(1)}');
 
   static Uri get mail => Uri(scheme: 'mailto', path: email);
+
+  /// Where the policy is published. Google Play needs a public URL, and the
+  /// page inside the app links out to the very same document — the source of
+  /// which is `docs/privacy-policy.html` in this repository.
+  static final Uri privacyPolicy = Uri.parse(
+    'https://sites.google.com/view/qamoos-arabi/privacy',
+  );
 }
 
 /// The app's own version, shown on the splash screen and in the drawer.

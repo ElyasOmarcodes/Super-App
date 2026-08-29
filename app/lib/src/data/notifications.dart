@@ -106,7 +106,7 @@ class WordNotifications {
     try {
       tz.initializeTimeZones();
       await _plugin!.initialize(
-        const InitializationSettings(
+        settings: const InitializationSettings(
           android: AndroidInitializationSettings('@mipmap/ic_launcher'),
           // Consent is asked for explicitly during onboarding instead, so the
           // reader meets the system dialog with an explanation already on
@@ -214,11 +214,11 @@ class WordNotifications {
         if (word == null) continue;
 
         await _plugin!.zonedSchedule(
-          _firstId + queued,
-          word.word,
-          _preview(word.preview),
-          when,
-          _details(),
+          id: _firstId + queued,
+          title: word.word,
+          body: _preview(word.preview),
+          scheduledDate: when,
+          notificationDetails: _details(),
           androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           payload: word.key,
         );
@@ -233,7 +233,7 @@ class WordNotifications {
     if (!_ready) return;
     try {
       for (var i = 0; i < _horizon; i++) {
-        await _plugin!.cancel(_firstId + i);
+        await _plugin!.cancel(id: _firstId + i);
       }
     } catch (error) {
       debugPrint('could not clear the schedule: $error');

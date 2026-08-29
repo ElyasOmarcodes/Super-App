@@ -955,6 +955,13 @@ class Strings {
     'این برنامه دربارهٔ شما چه می‌داند — و چرا هیچ',
     'What this app knows about you — and why it is nothing',
   );
+  String get privacyOnline => _pick(
+    'افتح النسخة المنشورة',
+    'خپره شوې بڼه پرانیځئ',
+    'نسخهٔ منتشرشده را باز کنید',
+    'Open the published copy',
+  );
+
   String get privacyUpdated => _pick(
     'آخر تحديث',
     'وروستی تازه کول',

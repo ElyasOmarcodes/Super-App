@@ -2,10 +2,10 @@
 """
 Draws the launcher icon and writes it into every platform slot.
 
-The mark is the letter qaf on the same violet gradient the word-of-the-day
-card wears, inside a ring broken by one bright arc — the still frame of the
-turning indicator the app opens with, so the icon and the splash screen are
-recognisably the same object.
+The mark is the letter qaf inside the scalloped disc of Material's newer
+loading indicator, on the same violet gradient the word-of-the-day card wears
+— the still frame of the shape the splash screen turns, so the icon and the
+app that opens from it are recognisably the same object.
 
 Run from the repository root:  python3 tools/make_icons.py
 """
@@ -25,10 +25,26 @@ FONT = os.path.join(APP, 'assets', 'fonts', 'Vazirmatn-Bold.ttf')
 GRADIENT_TOP = (140, 112, 255)
 GRADIENT_BOTTOM = (96, 71, 201)
 
+# The pale ground the halo sits on — QamusTheme's primaryContainer, so the
+# tile reads as the app's own surface rather than as a block of colour.
+GROUND_TOP = (243, 240, 255)
+GROUND_BOTTOM = (223, 216, 252)
+
 SUPERSAMPLE = 8
 
 
-def _diagonal_wash(s: int) -> Image.Image:
+def _scallop(centre: float, radius: float, rotation: float,
+             lobes: int = 10, swell: float = 0.075, steps: int = 720):
+    """The wavy circle: a radius that swells `lobes` times around the turn."""
+    points = []
+    for i in range(steps):
+        t = i / steps * 2 * math.pi
+        r = radius * (1 + swell * math.cos(lobes * (t - rotation)))
+        points.append((centre + math.cos(t) * r, centre + math.sin(t) * r))
+    return points
+
+
+def _diagonal_wash(s: int, start, end) -> Image.Image:
     """The card's own gradient: top-start to bottom-end, corner to corner.
 
     Built small and scaled up — a 64-pixel ramp resampled to a 4096-pixel icon
@@ -40,7 +56,7 @@ def _diagonal_wash(s: int) -> Image.Image:
     for y in range(n):
         for x in range(n):
             t = (x + y) / (2 * (n - 1))
-            pixels[x, y] = _lerp(GRADIENT_TOP, GRADIENT_BOTTOM, t) + (255,)
+            pixels[x, y] = _lerp(start, end, t) + (255,)
     return small.resize((s, s), Image.BICUBIC)
 
 
@@ -51,24 +67,25 @@ def draw_icon(size: int, background: bool = True) -> Image.Image:
     draw = ImageDraw.Draw(image)
 
     if background:
-        image.paste(_diagonal_wash(s), (0, 0))
+        image.paste(_diagonal_wash(s, GROUND_TOP, GROUND_BOTTOM), (0, 0))
 
     centre = s / 2
-    ring = s * 0.40
-    stroke = max(1, round(s * 0.042))
+    radius = s / 2
 
-    # The full ring, faint: the indicator's track.
-    draw.ellipse(
-        [centre - ring, centre - ring, centre + ring, centre + ring],
-        outline=(255, 255, 255, 64), width=stroke,
-    )
-    # And the arc riding on it, bright — one frame of the animation.
-    draw.arc(
-        [centre - ring, centre - ring, centre + ring, centre + ring],
-        start=-100, end=45, fill=(255, 255, 255, 235), width=stroke,
-    )
+    # The halo the scalloped shape floats inside, a shade deeper than the
+    # ground so the shape reads as resting on something.
+    draw.ellipse([0, 0, s, s], fill=GRADIENT_TOP + (46,))
 
-    font = ImageFont.truetype(FONT, int(s * 0.42))
+    # The wavy circle itself — the same curve app_mark.dart paints, frozen at
+    # the angle the splash starts from. Drawn onto its own layer so the
+    # gradient can be masked into it.
+    shape = Image.new('L', (s, s), 0)
+    ImageDraw.Draw(shape).polygon(
+        _scallop(centre, radius * 0.66, rotation=0.0), fill=255,
+    )
+    image.paste(_diagonal_wash(s, GRADIENT_TOP, GRADIENT_BOTTOM), (0, 0), shape)
+
+    font = ImageFont.truetype(FONT, int(s * 0.30))
     glyph = 'ق'
     box = draw.textbbox((0, 0), glyph, font=font)
     draw.text(
@@ -89,7 +106,7 @@ def write_png(path: str, size: int, background: bool = True):
     if background:
         # iOS refuses an icon with an alpha channel, so it is flattened onto
         # the gradient's own top colour rather than onto white.
-        flat = Image.new('RGB', icon.size, GRADIENT_TOP)
+        flat = Image.new('RGB', icon.size, GROUND_TOP)
         flat.paste(icon, mask=icon.split()[3])
         flat.save(path, 'PNG', optimize=True)
     else:

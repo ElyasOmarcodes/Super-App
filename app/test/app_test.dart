@@ -446,6 +446,7 @@ void main() {
           s.privacyHeading5,
           s.privacyBody5,
           s.privacyContact,
+          s.privacyOnline,
         ];
         for (final value in values) {
           expect(
@@ -901,6 +902,40 @@ void main() {
       }
     });
 
+    testWidgets('links out to the published copy', (tester) async {
+      await pumpApp(
+        tester,
+        home: const PrivacyPage(),
+        size: const Size(420, 3200),
+      );
+      expect(
+        find.byTooltip(const Strings(AppLocale.ar).privacyOnline),
+        findsOneWidget,
+      );
+      expect(
+        Developer.privacyPolicy.toString(),
+        'https://sites.google.com/view/qamoos-arabi/privacy',
+      );
+    });
+
+    testWidgets('the HTML copy carries the same five sections', (_) async {
+      // docs/privacy-policy.html is what actually gets hosted, so it has to
+      // say what the app says — in English, section for section.
+      final page = File('../docs/privacy-policy.html').readAsStringSync();
+      const english = Strings(AppLocale.en);
+      for (final heading in [
+        english.privacyHeading1,
+        english.privacyHeading2,
+        english.privacyHeading3,
+        english.privacyHeading4,
+        english.privacyHeading5,
+      ]) {
+        expect(page, contains(heading), reason: heading);
+      }
+      expect(page, contains(PrivacyPage.lastUpdated));
+      expect(page, contains(Developer.email));
+    });
+
     testWidgets('the hosted copy says the same thing as the app', (_) async {
       // Google Play reads docs/privacy-policy.md at a public URL while the
       // reader reads the page inside the app. They have to agree.
@@ -1050,12 +1085,20 @@ void main() {
 
       expect(find.byType(AppMark), findsOneWidget);
       expect(tester.widget<AppMark>(find.byType(AppMark)).progress, isTrue);
-      final ring = tester.widget<CircularProgressIndicator>(
-        find.byType(CircularProgressIndicator),
-      );
-      // Reduced motion is on in these tests, so the arc holds still rather
-      // than spinning forever — the same picture the icon shows.
-      expect(ring.value, isNotNull);
+      // Reduced motion is on in these tests, so the shape holds the pose the
+      // launcher icon is frozen in rather than turning forever.
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('the mark is a scalloped disc, not a plain circle', (_) async {
+      final path = scallopedPath(centre: Offset.zero, radius: 50, rotation: 0);
+      final bounds = path.getBounds();
+      // Ten lobes swelling 7.5%: the shape reaches past a 50-unit circle and
+      // pulls back inside it, which is what makes it read as a flower.
+      expect(bounds.width, greaterThan(100));
+      expect(bounds.width, lessThan(112));
+      expect(path.contains(const Offset(0, 0)), isTrue);
+      expect(path.contains(const Offset(60, 0)), isFalse);
     });
 
     testWidgets('the sidebar and the language picker wear the same mark', (

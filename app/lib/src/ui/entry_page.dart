@@ -22,9 +22,39 @@ class EntryPage extends StatefulWidget {
   State<EntryPage> createState() => _EntryPageState();
 }
 
+/// How tall the banner stands before it starts collapsing.
+const double _bannerHeight = 172;
+
 class _EntryPageState extends State<EntryPage> {
+  final _scroll = ScrollController();
+
   EntryDetail? _detail;
   bool _loaded = false;
+
+  /// True once the banner has closed far enough that the toolbar row is all
+  /// that is left of it.
+  bool _collapsed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scroll
+      ..removeListener(_onScroll)
+      ..dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (!_scroll.hasClients) return;
+    final top = MediaQuery.paddingOf(context).top;
+    final collapsed = _scroll.offset > _bannerHeight - kToolbarHeight - top - 8;
+    if (collapsed != _collapsed) setState(() => _collapsed = collapsed);
+  }
 
   @override
   void didChangeDependencies() {
@@ -68,10 +98,11 @@ class _EntryPageState extends State<EntryPage> {
 
     return Scaffold(
       body: CustomScrollView(
+        controller: _scroll,
         slivers: [
           SliverAppBar(
             pinned: true,
-            expandedHeight: 172,
+            expandedHeight: _bannerHeight,
             actions: [
               IconButton(
                 tooltip: isFavourite ? strings.unsaveWord : strings.saveWord,
@@ -106,18 +137,22 @@ class _EntryPageState extends State<EntryPage> {
                 icon: const Icon(Icons.library_books_rounded),
               ),
             ],
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsetsDirectional.only(
-                start: 20,
-                bottom: 14,
-                end: 130,
-              ),
-              title: Text(
+            // The word is drawn twice, and only ever one is visible: big, by
+            // the banner, while the bar is open; small, as the bar's own
+            // title, once it has closed. A FlexibleSpaceBar title would slide
+            // under the back button on the way — this cannot, because an
+            // AppBar always lays its title out after the leading widget.
+            title: AnimatedOpacity(
+              opacity: _collapsed ? 1 : 0,
+              duration: const Duration(milliseconds: 180),
+              child: Text(
                 detail.word,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              background: _Banner(detail: detail),
+            ),
+            flexibleSpace: FlexibleSpaceBar(
+              background: _Banner(detail: detail, collapsed: _collapsed),
             ),
           ),
           if (hidden > 0)
@@ -197,9 +232,13 @@ class _EntryPageState extends State<EntryPage> {
 }
 
 class _Banner extends StatelessWidget {
-  const _Banner({required this.detail});
+  const _Banner({required this.detail, required this.collapsed});
 
   final EntryDetail detail;
+
+  /// Fades the big word out as the small one arrives, so the two never
+  /// appear at once.
+  final bool collapsed;
 
   @override
   Widget build(BuildContext context) {
@@ -220,10 +259,9 @@ class _Banner extends StatelessWidget {
       ),
       child: SafeArea(
         child: Padding(
-          // The headword itself is drawn by the FlexibleSpaceBar title, which
-          // scales it down as the bar collapses; the banner only adds the
-          // metadata line that sits above it.
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 64),
+          // Clear of the toolbar row above, so nothing here can ever sit
+          // under the back button.
+          padding: const EdgeInsets.fromLTRB(20, kToolbarHeight + 4, 20, 12),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,6 +300,18 @@ class _Banner extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 4),
+              AnimatedOpacity(
+                opacity: collapsed ? 0 : 1,
+                duration: const Duration(milliseconds: 180),
+                child: Text(
+                  detail.word,
+                  textDirection: TextDirection.rtl,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.headlineLarge,
+                ),
               ),
             ],
           ),
