@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Privacy Policy — Qamus al-Maani</title>
+<meta name="description" content="Qamus al-Maani collects nothing. The whole dictionary lives on your device.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* The app's own palette, lifted from lib/src/theme.dart so the hosted page
+   and the page inside the app are recognisably the same document. */
+:root {
+  --surface: #F7F7FB;
+  --card: #FFFFFF;
+  --ink: #14141B;
+  --muted: #6B6B7B;
+  --line: #E6E6EE;
+  --violet: #7C5CFF;
+  --blue: #3B82F6;
+  --cyan: #06B6D4;
+  --emerald: #10B981;
+  --amber: #F59E0B;
+  --rose: #F43F5E;
+  --radius: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: #0B0B12;
+    --card: #15151F;
+    --ink: #ECECF2;
+    --muted: #9A9AAC;
+    --line: #272733;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--surface);
+  color: var(--ink);
+  font-family: Vazirmatn, "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.95;
+  -webkit-font-smoothing: antialiased;
+}
+main { max-width: 760px; margin: 0 auto; padding: 28px 18px 64px; }
+
+/* The emerald hero, the same card the app opens this page with. */
+.hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+  padding: 26px 24px 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #2ad19a 0%, #0b8d6a 100%);
+  box-shadow: 0 10px 28px rgba(16, 185, 129, .32);
+}
+.hero h1 { margin: 0; font-size: 26px; font-weight: 700; line-height: 1.4; }
+.hero p  { margin: 6px 0 0; opacity: .92; font-size: 14px; }
+.hero .meta {
+  margin-top: 16px; font-size: 12.5px; opacity: .9;
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+}
+.hero .shield {
+  position: absolute; inset-inline-end: -26px; bottom: -40px;
+  width: 190px; height: 190px; opacity: .13; pointer-events: none;
+}
+
+/* One card per section, with the icon tinted like the app's IconBadge. */
+.card {
+  margin-top: 14px; padding: 18px 18px 20px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(26, 26, 46, .05);
+}
+@media (prefers-color-scheme: dark) {
+  .card { box-shadow: 0 8px 24px rgba(0, 0, 0, .38); }
+}
+.card h2 {
+  margin: 0 0 12px; font-size: 18px; font-weight: 700; line-height: 1.5;
+  display: flex; align-items: center; gap: 12px;
+}
+.badge {
+  flex: none; width: 34px; height: 34px; border-radius: 11px;
+  display: grid; place-items: center;
+}
+.badge svg { width: 17px; height: 17px; }
+.card p { margin: 0; font-size: 14.5px; }
+
+.t-emerald { background: rgba(16,185,129,.14); color: var(--emerald); }
+.t-blue    { background: rgba(59,130,246,.14); color: var(--blue); }
+.t-violet  { background: rgba(124,92,255,.14); color: var(--violet); }
+.t-cyan    { background: rgba(6,182,212,.14);  color: var(--cyan); }
+.t-amber   { background: rgba(245,158,11,.14); color: var(--amber); }
+.t-rose    { background: rgba(244,63,94,.14);  color: var(--rose); }
+
+footer {
+  margin-top: 30px; text-align: center;
+  color: var(--muted); font-size: 13px;
+}
+footer a { color: var(--violet); font-weight: 600; text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+.mark { display: block; width: 56px; height: 56px; margin: 0 auto 12px; }
+</style>
+</head>
+<body>
+<main>
+
+  <section class="hero">
+    <!-- The shield the app watermarks this page with. -->
+    <svg class="shield" viewBox="0 0 24 24" fill="#fff" aria-hidden="true">
+      <path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3z"/>
+    </svg>
+    <h1>Privacy Policy</h1>
+    <p>What this app knows about you — and why it is nothing</p>
+    <div class="meta">
+      <span>Last updated: 2026-08-29</span>
+      <span>Qamus al-Maani · com.elyasomar.arabic.qamus</span>
+    </div>
+  </section>
+
+  <article class="card">
+    <h2><span class="badge t-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg></span>We collect nothing</h2>
+    <p>This app collects no personal data, creates no account for you, and asks for no name, no email and no number. There is no server it talks to, because there is no server.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18.5h2"/></svg></span>What stays on your device</h2>
+    <p>The words you save, what you have read, the interface language and theme, and the time of the daily word — all of it is stored on your device alone and never leaves it. Uninstalling the app erases it with them.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3z"/><path d="M9 12l2 2 4-4"/></svg></span>Permissions</h2>
+    <p>The only permission we ask for is to send notifications, and only for the word of the day. You may refuse it, or withdraw it later, and the app loses nothing. We do not ask for location, camera, contacts or files.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M2 8.8a16 16 0 0 1 20 0"/><path d="M5 12.4a11 11 0 0 1 14 0"/><path d="M8.5 16a6 6 0 0 1 7 0"/><path d="M3 3l18 18"/></svg></span>No internet, no advertising</h2>
+    <p>The whole dictionary is inside the app. No advertising, no trackers, no analytics, and no third-party libraries watching you. The app touches the network only if you yourself tap a contact link on the author's page.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 5.5A3 3 0 0 1 6 4h5v16H6a3 3 0 0 0-3 1.5z"/><path d="M21 5.5A3 3 0 0 0 18 4h-5v16h5a3 3 0 0 1 3 1.5z"/></svg></span>The lexicons</h2>
+    <p>The texts of the six lexicons belong to their publishers and are shown here for reading and study. The app itself is the work of the developer named on the “About the developer” page.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="11" r="2"/><path d="M6 16c.6-1.4 1.7-2 3-2s2.4.6 3 2M14.5 10h4M14.5 14h3"/></svg></span>The developer</h2>
+    <p>This app, "Qamus al-Maani" (identifier com.elyasomar.arabic.qamus), is developed by م. الیاس عمر, an independent developer — not a company or an organisation. He is solely responsible for the app and for this policy, and can be written to at ElyasOmar100@gmail.com; any question or request is answered within thirty days.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12l2 2 4-4M8 17h5"/></svg></span>What is accessed, collected, used and shared — precisely</h2>
+    <p>Access: the app does not access contacts, location, camera, microphone, photos, device files or the advertising identifier.</p>
+    <p>Collection: no personal or sensitive data is collected — no name, no email, no phone number, no location, no device identifier, and no usage or crash data.</p>
+    <p>Use: the words you save, the words you open, and your preferences (language, theme, text size, diacritics and the time of the daily word) are used for one purpose only: to show you what you asked for. None of it is used for advertising, analytics or recommendation.</p>
+    <p>Sharing: nothing is shared with anyone — not with the developer, not with a third party, not with any service. The app does not sell your data because it holds none of it.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="10" width="16" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></span>How it is kept safe</h2>
+    <p>Everything the app stores stays inside its own storage area on your device — the area the operating system keeps separate from every other app: an app-private directory on Android, the app sandbox on iOS, and the user data folder on Windows. And because nothing is sent over the network, there is no transmission to intercept and no server to breach. Protecting the device itself — a screen lock and storage encryption — is your operating system's job, and we recommend turning both on.</p>
+  </article>
+
+  <article class="card">
+    <h2><span class="badge t-rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 7h16M10 4h4M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M10 11v7M14 11v7"/></svg></span>How long it is kept, and how to delete it</h2>
+    <p>What you have saved stays for as long as the app is on your device — there is no fixed period, because the decision is yours rather than ours. You can erase it whenever you like, three ways:</p>
+    <p>• Reading history: the "Clear history" button on the Recent page.<br>• Saved words: unsave any word from its own page.<br>• Everything at once: uninstall the app, or clear the app's data from your system settings. It is all erased immediately, and no copy remains anywhere, because it never left your device in the first place.</p>
+    <p>And since we collect nothing, we hold nothing to delete on your behalf, and there is no deletion request to make.</p>
+  </article>
+
+  <footer>
+    <!-- The app's own mark: the scalloped disc, with the letter qaf. -->
+    <svg class="mark" viewBox="0 0 100 100" aria-hidden="true">
+      <circle cx="50" cy="50" r="50" fill="rgba(124,92,255,.16)"/>
+      <path fill="url(#g)" d="M50 17c3 0 5.5 3 8.5 3.8s6.6-.6 9.2 1 3 5.4 4.9 7.6 5.4 3.2 6.4 6-.9 6-.9 9.1.9 6.3-.1 9.1-4.5 3.8-6.4 6-2.3 5.9-4.9 7.5-6.2.2-9.2 1S53 72 50 72s-5.5-3-8.5-3.8-6.6.6-9.2-1-3-5.4-4.9-7.5-5.4-3.2-6.4-6 .1-6 .1-9.1-1.1-6.3-.1-9.1 4.5-3.8 6.4-6 2.3-5.9 4.9-7.6 6.2-.2 9.2-1S47 17 50 17z"/>
+      <defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#8C70FF"/><stop offset="1" stop-color="#6047C9"/>
+      </linearGradient></defs>
+      <text x="50" y="63" text-anchor="middle" fill="#fff"
+            font-family="Vazirmatn, sans-serif" font-size="34" font-weight="700">ق</text>
+    </svg>
+    <p>
+      For any question about privacy, write to<br>
+      <a href="mailto:ElyasOmar100@gmail.com">ElyasOmar100@gmail.com</a>
+    </p>
+    <p>M. Elyas Omar · قاموس المعاني</p>
+  </footer>
+
+</main>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Store Connect. Change to "ad-hoc" or "development" for a test
+	     build; "app-store-connect" is what a store submission needs. -->
+	<key>method</key>
+	<string>app-store-connect</string>
+
+	<!-- Your Apple Developer team. CI has no team, so the archive is built
+	     unsigned and this is filled in when you export on your own Mac.
+	     Xcode Organizer asks for it instead of reading it from here. -->
+	<key>teamID</key>
+	<string></string>
+
+	<key>signingStyle</key>
+	<string>automatic</string>
+
+	<!-- Apple re-signs and thins the binary per device on its side, so the
+	     upload carries the bitcode-free universal build. -->
+	<key>uploadSymbols</key>
+	<true/>
+	<key>manageAppVersionAndBuildNumber</key>
+	<false/>
+	<key>destination</key>
+	<string>export</string>
+</dict>
+</plist>

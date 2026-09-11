@@ -1,0 +1,474 @@
+name: build
+
+# Produces installable binaries for Android, Windows and iOS, then re-packs
+# each one as an .tar.xz archive compressed with LZMA2 at its extreme preset.
+# GitHub always serves artifacts inside a zip envelope; putting an already
+# maximally-compressed .tar.xz inside that zip is what keeps the download small.
+
+on:
+  push:
+    branches: ['**']
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+env:
+  # 3.47+ is required for the Windows job: GitHub's windows runners now ship
+  # Visual Studio 2026, and only Flutter 3.47 and later map that major version
+  # to the "Visual Studio 18 2026" CMake generator. Older Flutter detects the
+  # install happily and then emits the 2019 generator, which CMake rejects.
+  FLUTTER_VERSION: '3.47.2'
+  XZ_OPT: '-9e --threads=0'
+  # Stamped into the Windows installer. Kept in step with app/pubspec.yaml.
+  APP_VERSION: '1.3.0'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # --------------------------------------------------------------- analysis
+  check:
+    name: analyze and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+      - name: verify formatting
+        working-directory: app
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: analyze
+        working-directory: app
+        run: flutter analyze --fatal-infos
+      - name: test
+        working-directory: app
+        run: flutter test
+
+  # ---------------------------------------------------------------- android
+  android:
+    name: android
+    needs: check
+    runs-on: ubuntu-latest
+    env:
+      # Hoisted to the job because a step-level `if` may read `env` but not
+      # `secrets`. An absent secret arrives as an empty string, which is what
+      # the guard on the next step tests.
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # Google Play rejects a debug-signed bundle. If the repository carries
+      # an upload key, the release build is signed with it; if not, the build
+      # still runs (debug-signed) and the Play artifact says so, so a fork
+      # without secrets is never broken by this step.
+      - name: restore the upload key
+        if: env.ANDROID_KEYSTORE_BASE64 != ''
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > app/android/app/upload-keystore.jks
+          # Written by the shell from the environment rather than interpolated
+          # into the script by Actions, so no secret is ever expanded into
+          # this run's own text.
+          {
+            echo "storeFile=app/upload-keystore.jks"
+            echo "storePassword=$ANDROID_KEYSTORE_PASSWORD"
+            echo "keyAlias=$ANDROID_KEY_ALIAS"
+            echo "keyPassword=$ANDROID_KEY_PASSWORD"
+          } > app/android/key.properties
+          echo "signed=true" >> "$GITHUB_ENV"
+
+      # --split-per-abi keeps each APK to one architecture, which removes the
+      # other two copies of the Flutter engine from every download.
+      - name: build apks
+        working-directory: app
+        run: |
+          flutter build apk --release --split-per-abi \
+            --obfuscate --split-debug-info=build/symbols \
+            --tree-shake-icons
+          # QAMUS_UNSIGNED leaves the bundle with no signature at all. The
+          # keystore is the developer's, not CI's, and signing a bundle that
+          # already carries the debug signature leaves both in META-INF —
+          # which Play rejects. The APKs above stay debug-signed, because an
+          # unsigned APK cannot be installed and those are for sideloading.
+          QAMUS_UNSIGNED=1 flutter build appbundle --release \
+            --obfuscate --split-debug-info=build/symbols \
+            --tree-shake-icons
+
+      # The arm64 APK is what almost every phone in use actually needs, so it
+      # is published on its own rather than buried in an archive with the
+      # other ABIs and the bundle.
+      - name: pack the arm64 apk
+        run: |
+          cp app/build/app/outputs/flutter-apk/app-arm64-v8a-release.apk .
+          xz -9e --threads=0 --keep --force app-arm64-v8a-release.apk
+          ls -lh app-arm64-v8a-release.apk*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-arm64-apk
+          path: app-arm64-v8a-release.apk.xz
+          compression-level: 0        # the payload is already xz'd
+          if-no-files-found: error
+
+      # What actually gets uploaded to Google Play: the bundle, plus the two
+      # maps Play needs to make a crash report from an obfuscated build
+      # readable again.
+      - name: pack the Play bundle
+        run: |
+          mkdir -p play/debug-symbols
+          cp app/build/app/outputs/bundle/release/*.aab play/qamus-release.aab
+          cp tools/sign_for_play.sh play/
+          cp -r app/build/symbols/. play/debug-symbols/ 2>/dev/null || true
+          find app/build/app/outputs/mapping -name 'mapping.txt' \
+            -exec cp {} play/android-r8-mapping.txt \; 2>/dev/null || true
+
+          if [ "${signed:-}" = "true" ]; then
+            state="signed with the repository's upload key — ready to upload"
+          else
+            state="UNSIGNED — sign it with your own key first, see below"
+          fi
+
+          # Written with echo rather than a heredoc: a heredoc inside a YAML
+          # block scalar keeps this file's own indentation in every line of
+          # the output.
+          {
+            echo "Google Play upload — قاموس المعاني"
+            echo "=================================="
+            echo "application id : com.elyasomar.arabic.qamus"
+            echo "version        : ${APP_VERSION}"
+            echo "bundle         : qamus-release.aab"
+            echo "                 ($state)"
+            echo
+            echo "SIGNING — do this first"
+            echo "-----------------------"
+            echo "The bundle leaves CI unsigned on purpose: the keystore is"
+            echo "yours and never travels through this repository. Sign it on"
+            echo "your own machine, where the keystore lives:"
+            echo
+            echo "    ./sign_for_play.sh qamus-release.aab upload-keystore.jks upload"
+            echo
+            echo "It asks for the two passwords with the echo off, signs the"
+            echo "bundle in place, and verifies the result. By hand it is:"
+            echo
+            echo "    jarsigner -keystore upload-keystore.jks \\"
+            echo "      -sigalg SHA256withRSA -digestalg SHA-256 \\"
+            echo "      qamus-release.aab upload"
+            echo "    jarsigner -verify qamus-release.aab"
+            echo
+            echo "An .aab is signed with jarsigner, not apksigner: apksigner"
+            echo "speaks the APK signature schemes, which a bundle does not"
+            echo "use. Do not pass -strict either — an upload key is"
+            echo "self-signed, and -strict calls that a failure."
+            echo
+            echo "UPLOADING"
+            echo "---------"
+            echo "Play Console > Production > Create new release, and add"
+            echo "qamus-release.aab."
+            echo
+            echo "Then, under App bundle explorer > Downloads, upload both"
+            echo "maps — without them a crash report from this build is"
+            echo "unreadable:"
+            echo "    android-r8-mapping.txt   the Java/Kotlin names R8 renamed"
+            echo "    debug-symbols/           the Dart names --obfuscate renamed"
+            echo
+            echo "Keep that keystore. Losing it means never being able to"
+            echo "update this listing again."
+            echo
+            echo "Privacy policy (Play requires a public URL):"
+            echo "    https://sites.google.com/view/qamoos-arabi/privacy"
+            echo "    source: docs/privacy-policy.html in this repository"
+          } > play/README.txt
+
+          tar -C play -cf - . | xz -9e --threads=0 > qamus-googleplay.tar.xz
+          ls -lh play qamus-googleplay.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-googleplay
+          path: qamus-googleplay.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: pack the remaining builds
+        run: |
+          mkdir -p out
+          cp app/build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk out/
+          cp app/build/app/outputs/flutter-apk/app-x86_64-release.apk out/
+          cp app/build/app/outputs/bundle/release/*.aab out/
+          # Both halves of the build rename their symbols, and both leave a
+          # map behind. Without these a crash report from a release build is
+          # unreadable — they ship beside the binaries, never inside them.
+          mkdir -p out/symbols
+          cp -r app/build/symbols/. out/symbols/ 2>/dev/null || true
+          find app/build/app/outputs/mapping -name 'mapping.txt' \
+            -exec cp {} out/symbols/android-r8-mapping.txt \; 2>/dev/null || true
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-android-other.tar.xz
+          ls -lh out qamus-android-other.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-android-other
+          path: qamus-android-other.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------- windows
+  windows:
+    name: windows
+    needs: check
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # Prints the Visual Studio version Flutter will build against; a mismatch
+      # here is what a "could not find any instance of Visual Studio" CMake
+      # error actually means. See the FLUTTER_VERSION comment above.
+      - name: report toolchain
+        working-directory: app
+        run: flutter doctor -v
+
+      - name: build
+        working-directory: app
+        run: >
+          flutter build windows --release
+          --obfuscate --split-debug-info=build/symbols
+          --tree-shake-icons
+
+      - name: pack
+        shell: bash
+        run: |
+          # Several Release directories exist under build/windows (each plugin
+          # gets one); only the runner's holds the executable and its bundle.
+          release=app/build/windows/x64/runner/Release
+          [ -d "$release" ] || release=$(find app/build/windows -type d -path '*runner/Release' | head -n 1)
+          [ -x "$release/qamus.exe" ] || { echo "no runner bundle at $release"; exit 1; }
+          mkdir -p out/qamus
+          cp -r "$release"/* out/qamus/
+          rm -f out/qamus/*.pdb
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-windows.tar.xz
+          ls -lh qamus-windows.tar.xz
+
+      # One file that installs and runs on its own. Flutter's Windows output is
+      # an exe plus DLLs and a data/ tree, none of which works alone; Inno
+      # Setup (preinstalled on the runner) folds the lot into a single .exe.
+      - name: build the single-file installer
+        shell: pwsh
+        run: |
+          $release = "app/build/windows/x64/runner/Release"
+          if (-not (Test-Path "$release/qamus.exe")) {
+            throw "no runner bundle at $release"
+          }
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) {
+            $iscc = (Get-Command iscc.exe -ErrorAction SilentlyContinue).Source
+          }
+          if (-not $iscc) { throw "Inno Setup (ISCC.exe) not found on this runner" }
+          $bundle = (Resolve-Path $release).Path
+          & $iscc /Qp "/DBundleDir=$bundle" "/DAppVersion=$env:APP_VERSION" `
+            "/O$((Resolve-Path .).Path)" app/windows/packaging/qamus.iss
+          if ($LASTEXITCODE -ne 0) { throw "ISCC failed with $LASTEXITCODE" }
+          Get-Item qamus-setup.exe | Format-List Name, Length
+
+      - name: compress the installer
+        shell: bash
+        run: |
+          xz -9e --threads=0 --keep --force qamus-setup.exe
+          ls -lh qamus-setup.exe.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-windows-exe
+          path: qamus-setup.exe.xz
+          compression-level: 0
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-windows
+          path: qamus-windows.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+  # -------------------------------------------------------------------- ios
+  ios:
+    name: ios
+    needs: check
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: install dependencies
+        working-directory: app
+        run: flutter pub get
+
+      # Unsigned: a signed build needs a paid Apple team, so CI produces the
+      # .app that a developer can sign locally or that sideloaders accept.
+      - name: build
+        working-directory: app
+        run: >
+          flutter build ios --release --no-codesign
+          --obfuscate --split-debug-info=build/symbols
+          --tree-shake-icons
+
+      - name: pack
+        run: |
+          mkdir -p out/Payload
+          cp -R app/build/ios/iphoneos/Runner.app out/Payload/
+          (cd out && zip -0 -qry ../qamus-unsigned.ipa Payload)
+          rm -rf out
+          mkdir -p out && mv qamus-unsigned.ipa out/
+          tar -C out -cf - . | xz -9e --threads=0 > qamus-ios.tar.xz
+          ls -lh qamus-ios.tar.xz
+
+      # What App Store Connect needs is an archive Xcode can open in the
+      # Organizer. Signing needs a paid Apple team, which CI does not have,
+      # so the archive is built unsigned and signed on the developer's own
+      # Mac. If this Flutter refuses --no-codesign for `build ipa`, the step
+      # below falls back to the unsigned .app rather than taking the run red.
+      - name: build the App Store archive
+        working-directory: app
+        continue-on-error: true
+        run: |
+          flutter build ipa --release --no-codesign \
+            --obfuscate --split-debug-info=build/symbols \
+            --tree-shake-icons
+          ls -R build/ios/archive || true
+
+      - name: pack the App Store archive
+        run: |
+          mkdir -p store/debug-symbols
+          cp app/ios/ExportOptions.plist store/
+          cp -r app/build/symbols/. store/debug-symbols/ 2>/dev/null || true
+          archive=$(find app/build/ios/archive -maxdepth 1 -name '*.xcarchive' 2>/dev/null | head -n 1)
+
+          {
+            echo "App Store upload — قاموس المعاني"
+            echo "================================"
+            echo "bundle id : com.elyasomar.arabic.qamus"
+            echo "version   : ${APP_VERSION}"
+          } > store/README.txt
+
+          if [ -n "$archive" ]; then
+            cp -R "$archive" store/
+            {
+              echo "contents  : Runner.xcarchive (UNSIGNED — signing needs"
+              echo "            your Apple team, which CI does not have)"
+              echo
+              echo "On your Mac, either:"
+              echo
+              echo "  1. Double-click Runner.xcarchive. Xcode Organizer opens."
+              echo "     Distribute App > App Store Connect > Upload. Xcode"
+              echo "     signs it with your team along the way."
+              echo
+              echo "  2. Or, with ExportOptions.plist beside it:"
+              echo "       xcodebuild -exportArchive \\"
+              echo "         -archivePath Runner.xcarchive \\"
+              echo "         -exportOptionsPlist ExportOptions.plist \\"
+              echo "         -exportPath ./export"
+              echo "     then upload export/*.ipa with Transporter."
+              echo
+              echo "Set teamID in ExportOptions.plist before route 2."
+              echo "Organizer asks for it instead, so route 1 needs nothing."
+            } >> store/README.txt
+          else
+            mkdir -p store/Payload
+            cp -R app/build/ios/iphoneos/Runner.app store/Payload/
+            {
+              echo "contents  : Payload/Runner.app — UNSIGNED, and not an archive"
+              echo
+              echo "This runner could not produce an .xcarchive without an"
+              echo "Apple team. Build one on your own Mac instead:"
+              echo
+              echo "    flutter build ipa --release \\"
+              echo "      --obfuscate --split-debug-info=build/symbols"
+              echo
+              echo "then open build/ios/archive/Runner.xcarchive in Xcode"
+              echo "Organizer and distribute from there."
+            } >> store/README.txt
+          fi
+
+          {
+            echo
+            echo "debug-symbols/ holds the Dart names --obfuscate renamed."
+            echo "Keep them: without them a crash report from this build is"
+            echo "unreadable."
+            echo
+            echo "Privacy policy (the App Store requires a public URL):"
+            echo "    https://sites.google.com/view/qamoos-arabi/privacy"
+          } >> store/README.txt
+
+          tar -C store -cf - . | xz -9e --threads=0 > qamus-appstore.tar.xz
+          ls -lh qamus-appstore.tar.xz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-appstore
+          path: qamus-appstore.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qamus-ios
+          path: qamus-ios.tar.xz
+          compression-level: 0
+          if-no-files-found: error
+
+  # ------------------------------------------------------------------ release
+  release:
+    name: release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows, ios]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: publish
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/**/*.tar.xz
+            artifacts/**/*.apk.xz
+            artifacts/**/*.exe.xz
+            artifacts/**/*.aab
+          generate_release_notes: true
