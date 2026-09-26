@@ -69,7 +69,7 @@ fun SettingsScreen(
                     IconBubble(Icons.Rounded.Timer, Brand.Magenta)
                     HSpace(14.dp)
                     Column(Modifier.weight(1f)) {
-                        Text("د خلاصون موده", style = MaterialTheme.typography.titleSmall)
+                        Text("د خلاصون موده (دقیقې)", style = MaterialTheme.typography.titleSmall)
                         Text(
                             "کله چې د کوډ سره اپ خلاص کړئ، دومره دقیقې خلاص پاتې کیږي.",
                             style = MaterialTheme.typography.bodySmall,
@@ -85,9 +85,9 @@ fun SettingsScreen(
                             onClick = { onUnlockMinutes(m) },
                             label = {
                                 Text(
-                                    "$m دقیقې",
+                                    "$m",
                                     maxLines = 1,
-                                    softWrap = false,
+                                    style = MaterialTheme.typography.titleSmall,
                                     modifier = Modifier.fillMaxWidth(),
                                     textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                                 )
