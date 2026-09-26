@@ -159,7 +159,7 @@ private fun Hero(state: AppState, setup: SetupStatus) {
             if (!setup.allDone) {
                 VSpace(16.dp)
                 Text(
-                    "تنظیم: ${setup.doneCount} له ۵",
+                    "تنظیم: ${setup.doneCount} له 5",
                     color = Color.White.copy(alpha = 0.9f),
                     style = MaterialTheme.typography.labelMedium,
                 )

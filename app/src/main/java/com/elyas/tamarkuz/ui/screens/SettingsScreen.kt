@@ -78,12 +78,21 @@ fun SettingsScreen(
                     }
                 }
                 VSpace(12.dp)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(5, 10, 15, 30).forEach { m ->
                         FilterChip(
                             selected = state.unlockMinutes == m,
                             onClick = { onUnlockMinutes(m) },
-                            label = { Text("$m دقیقې") },
+                            label = {
+                                Text(
+                                    "$m دقیقې",
+                                    maxLines = 1,
+                                    softWrap = false,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                )
+                            },
+                            modifier = Modifier.weight(1f),
                             shape = RoundedCornerShape(14.dp),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,

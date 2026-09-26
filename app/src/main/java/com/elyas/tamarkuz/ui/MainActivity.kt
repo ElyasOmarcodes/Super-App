@@ -176,6 +176,6 @@ class MainActivity : ComponentActivity(), ShellActions {
             Intent(Intent.ACTION_PICK, ContactsContract.CommonDataKinds.Phone.CONTENT_URI)
 
         override fun parseResult(resultCode: Int, intent: Intent?): Uri? =
-            if (resultCode == RESULT_OK) intent?.data else null
+            if (resultCode == android.app.Activity.RESULT_OK) intent?.data else null
     }
 }
