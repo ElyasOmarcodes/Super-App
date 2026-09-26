@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">تمرکز</string>
+    <string name="accessibility_label">تمرکز — د اپونو ډال</string>
+    <string name="accessibility_desc">دا خدمت ګوري چې کوم اپ پرانیستل کیږي او ټولنیزې رسنۍ ستاسو د تمرکز لپاره بندوي. هیڅ معلومات بهر نه لیږل کیږي.</string>
+</resources>
